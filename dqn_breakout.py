@@ -1,6 +1,6 @@
 from stable_baselines.common.atari_wrappers import make_atari
 from stable_baselines.deepq.policies import CnnPolicy
-from stable_baselines import DQN
+from DQN_PiecewiseSchedule import DQN
 from stable_baselines.bench import Monitor
 from stable_baselines.results_plotter import load_results, ts2xy
 import os
@@ -28,23 +28,31 @@ def callback(_locals, _globals):
     return False
 
 
-log_dir = 'test/dqn_breakout/'
+log_dir = 'test_schedules/dqn_breakout/'
 
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 env = make_atari('BreakoutNoFrameskip-v4')
 # env = VecFrameStack(env, n_stack=4)
 env = Monitor(env, log_dir, allow_early_resets=True)
 
-from stable_baselines.common.vec_env import DummyVecEnv
-env = DummyVecEnv([lambda: env])
-
-model = DQN(CnnPolicy, env, verbose=0)
-
-print('init')
-model.learn(total_timesteps=25000, callback=callback)
+model = DQN(env=env,
+        policy=CnnPolicy,
+        learning_rate=1e-4,
+        buffer_size=1000000,
+        exploration_fraction=0.1,
+        exploration_final_eps=0.01,
+        train_freq=4,
+        learning_starts=50000,
+        target_network_update_freq=10000,
+        gamma=0.99,
+        verbose=1,
+        tensorboard_log=log_dir+'tensorboard/',
+        )
+model.learn(total_timesteps=int(1e8), callback=callback)
 model.save("dqn_breakout")
 
 # obs = env.reset()
