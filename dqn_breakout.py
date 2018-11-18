@@ -1,5 +1,6 @@
 from stable_baselines.common.atari_wrappers import make_atari
 from stable_baselines.deepq.policies import CnnPolicy
+from stable_baselines.common.vec_env import VecFrameStack
 from DQN_PiecewiseSchedule import DQN
 from stable_baselines.bench import Monitor
 from stable_baselines.results_plotter import load_results, ts2xy
@@ -40,18 +41,18 @@ env = make_atari('BreakoutNoFrameskip-v4')
 env = Monitor(env, log_dir, allow_early_resets=True)
 
 model = DQN(env=env,
-        policy=CnnPolicy,
-        learning_rate=1e-4,
-        buffer_size=1000000,
-        exploration_fraction=0.1,
-        exploration_final_eps=0.01,
-        train_freq=4,
-        learning_starts=50000,
-        target_network_update_freq=10000,
-        gamma=0.99,
-        verbose=1,
-        tensorboard_log=log_dir+'tensorboard/',
-        )
+            policy=CnnPolicy,
+            learning_rate=1e-4,
+            buffer_size=1000000,
+            exploration_fraction=0.1,
+            exploration_final_eps=0.01,
+            train_freq=4,
+            learning_starts=50000,
+            target_network_update_freq=10000,
+            gamma=0.99,
+            verbose=1,
+            tensorboard_log=log_dir + 'tensorboard/',
+            )
 model.learn(total_timesteps=int(1e8), callback=callback)
 model.save("dqn_breakout")
 
