@@ -50,9 +50,9 @@ def run(model_name, env_name, num_cpu, log_dir):
     # env = Monitor(env, log_dir, allow_early_resets=True)
 
     if model_name == 'A2C_Attention':
-        model = A2C(AttentionPolicy, env, verbose=1)
+        model = A2C(AttentionPolicy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
     elif model_name == 'A2C':
-        model = A2C(LstmPolicy, env, verbose=1)
+        model = A2C(LstmPolicy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
     else:
         model = None
     # model.learn(total_timesteps=int(1e7), callback=callback)
@@ -65,6 +65,6 @@ env_name = 'Seaquest'
 num_cpu = 4
 A2C_Attention_log_dir = 'attention_exp/A2C_Attention_{}/'.format(env_name)
 A2C_log_dir = 'attention_exp/A2C_{}/'.format(env_name)
-# run('A2C_Attention', env_name, num_cpu, A2C_Attention_log_dir)
-run('A2C', env_name, num_cpu, A2C_log_dir)
+run('A2C_Attention', env_name, num_cpu, A2C_Attention_log_dir)
+# run('A2C', env_name, num_cpu, A2C_log_dir)
 print('finish')
