@@ -79,13 +79,16 @@ def subsample(t, vt, bins):
     # ensure graph has no holes
     zs = np.where(v_cnts == 0)[0]
 
-    # assert v_cnts[0] > 0
-    for zero_idx in zs:
-        v_sums[zero_idx] = v_sums[zero_idx - 1]
-        v_cnts[zero_idx] = v_cnts[zero_idx - 1]
+    v_sums = np.delete(v_sums, zs)
+    v_cnts = np.delete(v_cnts, zs)
+    bins = np.delete(bins, zs)
 
-    zs = np.where(v_cnts == 0)[0]
-    print('If zs is not Null,v_cnts have zeros', zs)
+    # assert v_cnts[0] > 0
+    # for zero_idx in zs:
+    #     v_sums[zero_idx] = v_sums[zero_idx - 1]
+    #     v_cnts[zero_idx] = v_cnts[zero_idx - 1]
+    # zs = np.where(v_cnts == 0)[0]
+    # print('If zs is not Null,v_cnts have zeros', zs)
     return bins[1:], (v_sums / (v_cnts + int(1e-7)))[1:]
 
 
@@ -109,35 +112,37 @@ def plot_result(log_dir, title='Learning Curve'):
     plt.show()
 
 
-def tsplot_result(log_dirs, num_timesteps, title='Learning Curve'):
+def tsplot_result(log_dirs_dict, num_timesteps, title='Learning Curve'):
     # print('load_results', load_results(log_dir))
     import seaborn as sns
     import pandas as pd
     datas = []
-    for index, dir in enumerate(log_dirs):
-        init_data = load_results(dir)
-        init_data = init_data[init_data.l.cumsum() <= num_timesteps]
-        x, y = ts2xy(init_data, 'timesteps')
-        y = movingAverage(y, window=100)
-        x = x[len(x) - len(y):]
-        # x = x[:len(y)]
-        print('y', y)
-        x, y = subsample(t=x, vt=y, bins=np.linspace(x[0], num_timesteps, int(num_timesteps / 1000) + 1))
-        x = np.append(x, np.array([0]))
-        y = np.append(y, np.array([0]))
-        print('y after subsample', y)
+    for key in log_dirs_dict:
+        log_dirs = log_dirs_dict[key]
+        for index, dir in enumerate(log_dirs):
+            init_data = load_results(dir)
+            init_data = init_data[init_data.l.cumsum() <= num_timesteps]
+            x, y = ts2xy(init_data, 'timesteps')
+            y = movingAverage(y, window=100)
+            x = x[len(x) - len(y):]
+            # x = x[:len(y)]
+            print('y', y)
+            x, y = subsample(t=x, vt=y, bins=np.linspace(x[0], num_timesteps, int(1e4) + 1))
+            x = np.append(x, np.array([0]))
+            y = np.append(y, np.array([0]))
+            print('y after subsample', y)
 
-        # y = movingAverage(y, window=10)
-        # # x = x[len(x) - len(y):]
-        # x = x[:len(y)]
-        data = pd.DataFrame({'Frame': x,  'Reward': y, 'subject': np.repeat(index, len(x))})
+            # y = movingAverage(y, window=10)
+            # # x = x[len(x) - len(y):]
+            # x = x[:len(y)]
+            data = pd.DataFrame({'Timesteps': x,  'Reward': y, 'subject': np.repeat(index, len(x)), 'Algorithm': np.repeat(key, len(x))})
 
-        datas.append(data)
+            datas.append(data)
 
     data_df = pd.concat(datas, ignore_index=True)
 
     # print('data', data_df)
-    sns.tsplot(data=data_df, time='Frame', value='Reward', unit='subject')
+    sns.tsplot(data=data_df, time='Timesteps', value='Reward', unit='subject', condition='Algorithm')
 
 
 if __name__ == '__main__':
@@ -149,9 +154,10 @@ if __name__ == '__main__':
     # ax = sns.tsplot(time="timepoint", value="BOLD signal", unit="subject", condition="ROI", data=gammas)
 
     # tsplot_result(log_dirs=['test/CartPole/', 'test/dqn_breakout/'])
-    tsplot_result(log_dirs=['attention_exp/A2C_Attention_Tutankham'], num_timesteps=int(1e7))
+    log_dirs = {'A2C_Attention': ['attention_exp/A2C_Attention_Tutankham'], 'A2C': ['attention_exp/A2C_Tutankham']}
+    tsplot_result(log_dirs_dict=log_dirs, num_timesteps=int(1e8))
 
-    # print(np.cumsum(load_results('test/').l))
+    # print(np.cumsum(load_results('test/').l))P
     # from stable_baselines.results_plotter import plot_results
     # plot_results(['test/', 'test/CartPole/'], int(10e6), 'timesteps', 'Learning Curve')
 
