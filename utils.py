@@ -65,21 +65,28 @@ def subsample(t, vt, bins):
         average values in all bins
     """
     bin_idx = np.digitize(t, bins) - 1
-    print('t', t)
-    print('bin_idx', bin_idx)
+
     v_sums = np.zeros(len(bins), dtype=np.float32)
     v_cnts = np.zeros(len(bins), dtype=np.float32)
-    np.add.at(v_sums, bin_idx, vt)
+
+    # np.add.at(v_sums, bin_idx, vt)
+    # fix np.add.at(v_sums, bin_idx, vt)
+    for index, t_iter in enumerate(t):
+        binIndex = np.digitize(t_iter, bins) - 1
+        np.add.at(v_sums, [binIndex], vt[index])
     np.add.at(v_cnts, bin_idx, 1)
+
     # ensure graph has no holes
-    zs = np.where(v_cnts == 0)
+    zs = np.where(v_cnts == 0)[0]
+
     # assert v_cnts[0] > 0
     for zero_idx in zs:
         v_sums[zero_idx] = v_sums[zero_idx - 1]
         v_cnts[zero_idx] = v_cnts[zero_idx - 1]
 
-    print('v_sums', v_sums)
-    return bins[1:], (v_sums / (v_cnts + 1e-7))[1:]
+    zs = np.where(v_cnts == 0)[0]
+    print('If zs is not Null,v_cnts have zeros', zs)
+    return bins[1:], (v_sums / (v_cnts + int(1e-7)))[1:]
 
 
 def movingAverage(values, window):
@@ -92,7 +99,7 @@ def plot_result(log_dir, title='Learning Curve'):
     # print(np.cumsum(load_results(log_dir).1.values))
     x, y = ts2xy(load_results(log_dir), 'timesteps')
     # print(x, y)
-    y = movingAverage(y, window=100)
+    # y = movingAverage(y, window=100)
     x = x[len(x) - len(y):]
     fig = plt.figure(title)
     plt.plot(x, y)
@@ -102,46 +109,47 @@ def plot_result(log_dir, title='Learning Curve'):
     plt.show()
 
 
-def tsplot_result(log_dirs, title='Learning Curve'):
+def tsplot_result(log_dirs, num_timesteps, title='Learning Curve'):
     # print('load_results', load_results(log_dir))
     import seaborn as sns
     import pandas as pd
-    xlist = []
-    ylist = []
     datas = []
     for index, dir in enumerate(log_dirs):
-
-        x, y = ts2xy(load_results(dir), 'timesteps')
-
-        if dir == 'test/dqn_breakout/':
-            y += 10
-        print(y.shape)
+        init_data = load_results(dir)
+        init_data = init_data[init_data.l.cumsum() <= num_timesteps]
+        x, y = ts2xy(init_data, 'timesteps')
         y = movingAverage(y, window=100)
         x = x[len(x) - len(y):]
-        x, y = subsample(t=x, vt=y, bins=np.linspace(1000, int(6000), int(50) + 1))
+        # x = x[:len(y)]
+        print('y', y)
+        x, y = subsample(t=x, vt=y, bins=np.linspace(x[0], num_timesteps, int(num_timesteps / 1000) + 1))
+        x = np.append(x, np.array([0]))
+        y = np.append(y, np.array([0]))
+        print('y after subsample', y)
 
+        # y = movingAverage(y, window=10)
+        # # x = x[len(x) - len(y):]
+        # x = x[:len(y)]
         data = pd.DataFrame({'Frame': x,  'Reward': y, 'subject': np.repeat(index, len(x))})
-        xlist.append(x)
-        ylist.append(y)
+
         datas.append(data)
 
-    # data = pd.DataFrame({'Frame': x,  'Average Episode Reward': ylist})
     data_df = pd.concat(datas, ignore_index=True)
 
-    # data = pd.DataFrame(ylist)
-    print('data', data_df)
+    # print('data', data_df)
     sns.tsplot(data=data_df, time='Frame', value='Reward', unit='subject')
 
 
 if __name__ == '__main__':
     # plot_result(log_dir='test/')
     import seaborn as sns
-    gammas = sns.load_dataset("gammas")
-
-    print('gammas', gammas)
+    # gammas = sns.load_dataset("gammas")
+    #
+    # print('gammas', gammas)
     # ax = sns.tsplot(time="timepoint", value="BOLD signal", unit="subject", condition="ROI", data=gammas)
 
-    tsplot_result(log_dirs=['test/CartPole/', 'test/dqn_breakout/'])
+    # tsplot_result(log_dirs=['test/CartPole/', 'test/dqn_breakout/'])
+    tsplot_result(log_dirs=['attention_exp/A2C_Attention_Tutankham'], num_timesteps=int(1e7))
 
     # print(np.cumsum(load_results('test/').l))
     # from stable_baselines.results_plotter import plot_results
