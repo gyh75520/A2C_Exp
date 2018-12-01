@@ -79,16 +79,16 @@ def subsample(t, vt, bins):
     # ensure graph has no holes
     zs = np.where(v_cnts == 0)[0]
 
-    v_sums = np.delete(v_sums, zs)
-    v_cnts = np.delete(v_cnts, zs)
-    bins = np.delete(bins, zs)
+    # v_sums = np.delete(v_sums, zs)
+    # v_cnts = np.delete(v_cnts, zs)
+    # bins = np.delete(bins, zs)
 
     # assert v_cnts[0] > 0
-    # for zero_idx in zs:
-    #     v_sums[zero_idx] = v_sums[zero_idx - 1]
-    #     v_cnts[zero_idx] = v_cnts[zero_idx - 1]
-    # zs = np.where(v_cnts == 0)[0]
-    # print('If zs is not Null,v_cnts have zeros', zs)
+    for zero_idx in zs:
+        v_sums[zero_idx] = v_sums[zero_idx - 1]
+        v_cnts[zero_idx] = v_cnts[zero_idx - 1]
+    zs = np.where(v_cnts == 0)[0]
+    print('If zs is not Null,v_cnts have zeros', zs)
     return bins[1:], (v_sums / (v_cnts + int(1e-7)))[1:]
 
 
@@ -127,7 +127,7 @@ def tsplot_result(log_dirs_dict, num_timesteps, title='Learning Curve'):
             x = x[len(x) - len(y):]
             # x = x[:len(y)]
             print('y', y)
-            x, y = subsample(t=x, vt=y, bins=np.linspace(x[0], num_timesteps, int(1e4) + 1))
+            x, y = subsample(t=x, vt=y, bins=np.linspace(0, num_timesteps, int(1000) + 1))
             x = np.append(x, np.array([0]))
             y = np.append(y, np.array([0]))
             print('y after subsample', y)
@@ -141,21 +141,21 @@ def tsplot_result(log_dirs_dict, num_timesteps, title='Learning Curve'):
 
     data_df = pd.concat(datas, ignore_index=True)
 
-    # print('data', data_df)
+    print('data', data_df)
     sns.tsplot(data=data_df, time='Timesteps', value='Reward', unit='subject', condition='Algorithm')
 
 
 if __name__ == '__main__':
     # plot_result(log_dir='test/')
-    import seaborn as sns
+    # import seaborn as sns
     # gammas = sns.load_dataset("gammas")
-    #
+    # #
     # print('gammas', gammas)
     # ax = sns.tsplot(time="timepoint", value="BOLD signal", unit="subject", condition="ROI", data=gammas)
 
     # tsplot_result(log_dirs=['test/CartPole/', 'test/dqn_breakout/'])
-    log_dirs = {'A2C_Attention': ['attention_exp/A2C_Attention_Tutankham'], 'A2C': ['attention_exp/A2C_Tutankham']}
-    tsplot_result(log_dirs_dict=log_dirs, num_timesteps=int(1e8))
+    log_dirs = {'A2C_Attention': ['attention_exp1/A2C_Attention_Qbert1'], 'A2C': ['attention_exp1/A2C_Qbert', 'attention_exp1/A2C_Qbert1']}
+    tsplot_result(log_dirs_dict=log_dirs, num_timesteps=int(1e7))
 
     # print(np.cumsum(load_results('test/').l))P
     # from stable_baselines.results_plotter import plot_results
