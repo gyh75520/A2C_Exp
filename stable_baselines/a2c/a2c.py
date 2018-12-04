@@ -371,7 +371,10 @@ class A2CRunner(AbstractEnvRunner):
             self.obs = obs
             mb_rewards.append(rewards)
         mb_dones.append(self.dones)
-        mb_intrinsic_rewards.append(np.zeros_like(intrinsic_rewards))
+        # for attention
+        _, _, _, _, attention = self.model.step_with_attention(self.obs, self.states, self.dones)
+        intrinsic_rewards = np.max(attention, axis=1)
+        mb_intrinsic_rewards.append(intrinsic_rewards)
         mb_intrinsic_rewards.pop(0)
         # batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype).swapaxes(1, 0).reshape(self.batch_ob_shape)
