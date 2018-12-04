@@ -355,7 +355,7 @@ class A2CRunner(AbstractEnvRunner):
         mb_states = self.states
         for _ in range(self.n_steps):
             actions, values, states, _, attention = self.model.step_with_attention(self.obs, self.states, self.dones)
-            intrinsic_rewards = np.max(attention, axis=1)
+            intrinsic_rewards = -np.max(attention, axis=1)
             mb_intrinsic_rewards.append(intrinsic_rewards)
             mb_obs.append(np.copy(self.obs))
             mb_actions.append(actions)
@@ -373,7 +373,7 @@ class A2CRunner(AbstractEnvRunner):
         mb_dones.append(self.dones)
         # for attention
         _, _, _, _, attention = self.model.step_with_attention(self.obs, self.states, self.dones)
-        intrinsic_rewards = np.max(attention, axis=1)
+        intrinsic_rewards = -np.max(attention, axis=1)
         mb_intrinsic_rewards.append(intrinsic_rewards)
         mb_intrinsic_rewards.pop(0)
         # batch of steps to batch of rollouts
@@ -388,15 +388,17 @@ class A2CRunner(AbstractEnvRunner):
         true_rewards = np.copy(mb_rewards)
         last_values = self.model.value(self.obs, self.states, self.dones).tolist()
         # discount/bootstrap off value fn
-        for n, (rewards, dones, value) in enumerate(zip(mb_rewards, mb_dones, last_values)):
+        for n, (rewards, intrinsic_rewards, dones, value) in enumerate(zip(mb_rewards, mb_intrinsic_rewards, mb_dones, last_values)):
             rewards = rewards.tolist()
+            intrinsic_rewards = intrinsic_rewards.tolist()
             dones = dones.tolist()
             if dones[-1] == 0:
                 rewards = discount_with_dones(rewards + [value], dones + [0], self.gamma)[:-1]
             else:
                 rewards = discount_with_dones(rewards, dones, self.gamma)
+            intrinsic_rewards = discount_with_dones(intrinsic_rewards, dones, self.gamma)
             mb_rewards[n] = rewards
-
+            mb_intrinsic_rewards[n] = intrinsic_rewards
         # print('mb_rewards', mb_rewards)
         # convert from [n_env, n_steps, ...] to [n_steps * n_env, ...]
         mb_rewards = mb_rewards.reshape(-1, *mb_rewards.shape[2:])
