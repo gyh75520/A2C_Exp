@@ -7,8 +7,29 @@ from stable_baselines.common import set_global_seeds
 from stable_baselines import A2C
 from stable_baselines.common.atari_wrappers import make_atari
 '''
-using attention as intrinsic rewards
+attention2 get bad perfomance compared with attention1
+try to fix it through change cnn
 '''
+
+
+def nature_cnn(scaled_images, **kwargs):
+    """
+    CNN from Nature paper.
+
+    :param scaled_images: (TensorFlow Tensor) Image input placeholder
+    :param kwargs: (dict) Extra keywords parameters for the convolutional layers of the CNN
+    :return: (TensorFlow Tensor) The CNN output layer
+    """
+    activ = tf.nn.relu
+    print('scaled_images', scaled_images)
+    layer_1 = activ(conv(scaled_images, 'c1', n_filters=32, filter_size=8, stride=4, init_scale=np.sqrt(2), **kwargs))
+    layer_2 = activ(conv(layer_1, 'c2', n_filters=64, filter_size=4, stride=2, init_scale=np.sqrt(2), **kwargs))
+    layer_3 = activ(conv(layer_2, 'c3', n_filters=64, filter_size=3, stride=1, init_scale=np.sqrt(2), **kwargs))
+    print('layer_3', layer_3)
+    # layer_3 = conv_to_fc(layer_3)
+
+    # return activ(linear(layer_3, 'fc1', n_hidden=512, init_scale=np.sqrt(2)))
+    return layer_3
 
 
 def custom_cnn(scaled_images, **kwargs):
@@ -23,7 +44,8 @@ def custom_cnn(scaled_images, **kwargs):
     print('scaled_images', scaled_images)
     layer_1 = activ(conv(scaled_images, 'c1', n_filters=32, filter_size=5, stride=5, init_scale=np.sqrt(2), **kwargs))
     layer_2 = activ(conv(layer_1, 'c2', n_filters=64, filter_size=2, stride=2, init_scale=np.sqrt(2), **kwargs))
-    layer_3 = activ(conv(layer_2, 'c3', n_filters=64, filter_size=1, stride=1, init_scale=np.sqrt(2), **kwargs))
+    # layer_3 = activ(conv(layer_2, 'c3', n_filters=64, filter_size=1, stride=1, init_scale=np.sqrt(2), **kwargs))
+    layer_3 = layer_2
     print('layer_3', layer_3)
     # layer_3 = conv_to_fc(layer_3)
 
@@ -50,11 +72,11 @@ def linear_without_bias(input_tensor, scope, n_hidden, init_scale=1.0):
         return tf.matmul(input_tensor, weight)
 
 
-class Attention3Policy(LstmPolicy):
+class Attention4Policy(LstmPolicy):
     __module__ = None
 
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, n_lstm=256, reuse=False, layers=None,
-                 cnn_extractor=custom_cnn, layer_norm=False, feature_extraction="cnn", **kwargs):
+                 cnn_extractor=nature_cnn, layer_norm=False, feature_extraction="cnn", **kwargs):
         # super(LstmPolicy, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, n_lstm, reuse,
         #                                  scale=(feature_extraction == "cnn"))
         # add this function to LstmPolicy to init ActorCriticPolicy
@@ -159,7 +181,7 @@ if __name__ == '__main__':
     env = SubprocVecEnv([make_env(env_id, i) for i in range(num_cpu)])
     # env = VecFrameStack(env, n_stack=4)
     # print(env.observation_space.shape)
-    model = A2C(Attention3Policy, env, verbose=1)
+    model = A2C(Attention4Policy, env, verbose=1)
     model.learn(total_timesteps=1000)
     # model.save("A2C_Attention_breakout")
     # del model

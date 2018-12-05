@@ -9,6 +9,7 @@ from stable_baselines import A2C
 from A2C_attention import AttentionPolicy, LstmPolicy
 from A2C_attention2 import Attention2Policy
 from A2C_attention3 import Attention3Policy
+from A2C_attention4 import Attention4Policy
 best_mean_reward, n_steps = -np.inf, 0
 
 
@@ -56,6 +57,8 @@ def run(model_name, env_name, num_cpu, log_dir):
         model = A2C(Attention2Policy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
     elif model_name == 'A2C_Attention3':
         model = A2C(Attention3Policy, env, verbose=1)
+    elif model_name == 'A2C_Attention4':
+        model = A2C(Attention4Policy, env, verbose=1)
     elif model_name == 'A2C':
         model = A2C(LstmPolicy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
     else:
@@ -68,11 +71,13 @@ def run(model_name, env_name, num_cpu, log_dir):
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 env_name = 'Breakout'
 num_cpu = 4
+A2C_Attention4_log_dir = 'attention_exp/A2C_Attention4_{}/'.format(env_name)
 A2C_Attention3_log_dir = 'attention_exp/A2C_Attention3_{}/'.format(env_name)
 A2C_Attention2_log_dir = 'attention_exp/A2C_Attention2_{}/'.format(env_name)
 A2C_Attention_log_dir = 'attention_exp/A2C_Attention_{}/'.format(env_name)
 A2C_log_dir = 'attention_exp/A2C_{}/'.format(env_name)
-run('A2C_Attention3', env_name, num_cpu, A2C_Attention3_log_dir)
+run('A2C_Attention4', env_name, num_cpu, A2C_Attention4_log_dir)
+# run('A2C_Attention3', env_name, num_cpu, A2C_Attention3_log_dir)
 # run('A2C_Attention2', env_name, num_cpu, A2C_Attention2_log_dir)
 # run('A2C_Attention', env_name, num_cpu, A2C_Attention_log_dir)
 # run('A2C', env_name, num_cpu, A2C_log_dir)

@@ -7,6 +7,11 @@ from stable_baselines.common import set_global_seeds
 from stable_baselines import A2C
 from stable_baselines.common.atari_wrappers import make_atari
 
+'''
+change nature_cnn to custom_cnn
+add get_attention to plot attetion
+'''
+
 
 def custom_cnn(scaled_images, **kwargs):
     """

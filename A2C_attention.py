@@ -6,6 +6,9 @@ from stable_baselines.a2c.utils import conv, linear, batch_to_seq, seq_to_batch,
 from stable_baselines.common import set_global_seeds
 from stable_baselines import A2C
 from stable_baselines.common.atari_wrappers import make_atari
+'''
+add attetion
+'''
 
 
 def nature_cnn(scaled_images, **kwargs):
