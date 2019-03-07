@@ -148,7 +148,7 @@ class A2C(ActorCriticRLModel):
                 self.train_model = train_model
                 self.step_model = step_model
                 self.step = step_model.step
-                self.step_with_attention = step_model.step_with_attention
+                # self.step_with_attention = step_model.step_with_attention
                 self.proba_step = step_model.proba_step
                 self.value = step_model.value
                 self.initial_state = step_model.initial_state
@@ -291,58 +291,6 @@ class A2CRunner(AbstractEnvRunner):
         super(A2CRunner, self).__init__(env=env, model=model, n_steps=n_steps)
         self.gamma = gamma
 
-    # def run(self):
-    #     """
-    #     Run a learning step of the model
-    #
-    #     :return: ([float], [float], [float], [bool], [float], [float])
-    #              observations, states, rewards, masks, actions, values
-    #     """
-    #     mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
-    #     mb_states = self.states
-    #     for _ in range(self.n_steps):
-    #         actions, values, states, _ = self.model.step(self.obs, self.states, self.dones)
-    #         mb_obs.append(np.copy(self.obs))
-    #         mb_actions.append(actions)
-    #         mb_values.append(values)
-    #         mb_dones.append(self.dones)
-    #         clipped_actions = actions
-    #         # Clip the actions to avoid out of bound error
-    #         if isinstance(self.env.action_space, gym.spaces.Box):
-    #             clipped_actions = np.clip(actions, self.env.action_space.low, self.env.action_space.high)
-    #         obs, rewards, dones, _ = self.env.step(clipped_actions)
-    #         self.states = states
-    #         self.dones = dones
-    #         self.obs = obs
-    #         mb_rewards.append(rewards)
-    #     mb_dones.append(self.dones)
-    #     # batch of steps to batch of rollouts
-    #     mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype).swapaxes(1, 0).reshape(self.batch_ob_shape)
-    #     mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(0, 1)
-    #     mb_actions = np.asarray(mb_actions, dtype=np.int32).swapaxes(0, 1)
-    #     mb_values = np.asarray(mb_values, dtype=np.float32).swapaxes(0, 1)
-    #     mb_dones = np.asarray(mb_dones, dtype=np.bool).swapaxes(0, 1)
-    #     mb_masks = mb_dones[:, :-1]
-    #     mb_dones = mb_dones[:, 1:]
-    #     true_rewards = np.copy(mb_rewards)
-    #     last_values = self.model.value(self.obs, self.states, self.dones).tolist()
-    #     # discount/bootstrap off value fn
-    #     for n, (rewards, dones, value) in enumerate(zip(mb_rewards, mb_dones, last_values)):
-    #         rewards = rewards.tolist()
-    #         dones = dones.tolist()
-    #         if dones[-1] == 0:
-    #             rewards = discount_with_dones(rewards + [value], dones + [0], self.gamma)[:-1]
-    #         else:
-    #             rewards = discount_with_dones(rewards, dones, self.gamma)
-    #         mb_rewards[n] = rewards
-    #
-    #     # convert from [n_env, n_steps, ...] to [n_steps * n_env, ...]
-    #     mb_rewards = mb_rewards.reshape(-1, *mb_rewards.shape[2:])
-    #     mb_actions = mb_actions.reshape(-1, *mb_actions.shape[2:])
-    #     mb_values = mb_values.reshape(-1, *mb_values.shape[2:])
-    #     mb_masks = mb_masks.reshape(-1, *mb_masks.shape[2:])
-    #     return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, true_rewards
-
     def run(self):
         """
         Run a learning step of the model
@@ -351,12 +299,9 @@ class A2CRunner(AbstractEnvRunner):
                  observations, states, rewards, masks, actions, values
         """
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
-        mb_intrinsic_rewards = []
         mb_states = self.states
         for _ in range(self.n_steps):
-            actions, values, states, _, attention = self.model.step_with_attention(self.obs, self.states, self.dones)
-            intrinsic_rewards = -np.max(attention, axis=1)
-            mb_intrinsic_rewards.append(intrinsic_rewards)
+            actions, values, states, _ = self.model.step(self.obs, self.states, self.dones)
             mb_obs.append(np.copy(self.obs))
             mb_actions.append(actions)
             mb_values.append(values)
@@ -371,15 +316,9 @@ class A2CRunner(AbstractEnvRunner):
             self.obs = obs
             mb_rewards.append(rewards)
         mb_dones.append(self.dones)
-        # for attention
-        _, _, _, _, attention = self.model.step_with_attention(self.obs, self.states, self.dones)
-        intrinsic_rewards = -np.max(attention, axis=1)
-        mb_intrinsic_rewards.append(intrinsic_rewards)
-        mb_intrinsic_rewards.pop(0)
         # batch of steps to batch of rollouts
         mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype).swapaxes(1, 0).reshape(self.batch_ob_shape)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(0, 1)
-        mb_intrinsic_rewards = np.asarray(mb_intrinsic_rewards, dtype=np.float32).swapaxes(0, 1)
         mb_actions = np.asarray(mb_actions, dtype=np.int32).swapaxes(0, 1)
         mb_values = np.asarray(mb_values, dtype=np.float32).swapaxes(0, 1)
         mb_dones = np.asarray(mb_dones, dtype=np.bool).swapaxes(0, 1)
@@ -388,30 +327,91 @@ class A2CRunner(AbstractEnvRunner):
         true_rewards = np.copy(mb_rewards)
         last_values = self.model.value(self.obs, self.states, self.dones).tolist()
         # discount/bootstrap off value fn
-        for n, (rewards, intrinsic_rewards, dones, value) in enumerate(zip(mb_rewards, mb_intrinsic_rewards, mb_dones, last_values)):
+        for n, (rewards, dones, value) in enumerate(zip(mb_rewards, mb_dones, last_values)):
             rewards = rewards.tolist()
-            intrinsic_rewards = intrinsic_rewards.tolist()
             dones = dones.tolist()
             if dones[-1] == 0:
                 rewards = discount_with_dones(rewards + [value], dones + [0], self.gamma)[:-1]
             else:
                 rewards = discount_with_dones(rewards, dones, self.gamma)
-            intrinsic_rewards = discount_with_dones(intrinsic_rewards, dones, self.gamma)
             mb_rewards[n] = rewards
-            mb_intrinsic_rewards[n] = intrinsic_rewards
-        # print('mb_rewards', mb_rewards)
+
         # convert from [n_env, n_steps, ...] to [n_steps * n_env, ...]
         mb_rewards = mb_rewards.reshape(-1, *mb_rewards.shape[2:])
         mb_actions = mb_actions.reshape(-1, *mb_actions.shape[2:])
         mb_values = mb_values.reshape(-1, *mb_values.shape[2:])
         mb_masks = mb_masks.reshape(-1, *mb_masks.shape[2:])
-
-        mb_intrinsic_rewards = mb_intrinsic_rewards.reshape(-1, *mb_intrinsic_rewards.shape[2:])
-        # print('mb_rewards', mb_rewards)
-        # print('mb_intrinsic_rewards', mb_intrinsic_rewards)
-        mb_rewards += mb_intrinsic_rewards
-        # print('mb_intrinsic_rewards+mb_rewards', mb_rewards)
-        with open('mb_intrinsic_rewards.txt', 'a') as file:
-            file.write('mb_intrinsic_rewards{}\n'.format(mb_intrinsic_rewards))
-            file.write('mb_rewards{}\n'.format(mb_rewards))
         return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, true_rewards
+
+    # def run(self):
+    #     """
+    #     Run a learning step of the model
+    #
+    #     :return: ([float], [float], [float], [bool], [float], [float])
+    #              observations, states, rewards, masks, actions, values
+    #     """
+    #     mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [], [], [], [], []
+    #     mb_intrinsic_rewards = []
+    #     mb_states = self.states
+    #     for _ in range(self.n_steps):
+    #         actions, values, states, _, attention = self.model.step_with_attention(self.obs, self.states, self.dones)
+    #         intrinsic_rewards = -np.max(attention, axis=1)
+    #         mb_intrinsic_rewards.append(intrinsic_rewards)
+    #         mb_obs.append(np.copy(self.obs))
+    #         mb_actions.append(actions)
+    #         mb_values.append(values)
+    #         mb_dones.append(self.dones)
+    #         clipped_actions = actions
+    #         # Clip the actions to avoid out of bound error
+    #         if isinstance(self.env.action_space, gym.spaces.Box):
+    #             clipped_actions = np.clip(actions, self.env.action_space.low, self.env.action_space.high)
+    #         obs, rewards, dones, _ = self.env.step(clipped_actions)
+    #         self.states = states
+    #         self.dones = dones
+    #         self.obs = obs
+    #         mb_rewards.append(rewards)
+    #     mb_dones.append(self.dones)
+    #     # for attention
+    #     _, _, _, _, attention = self.model.step_with_attention(self.obs, self.states, self.dones)
+    #     intrinsic_rewards = -np.max(attention, axis=1)
+    #     mb_intrinsic_rewards.append(intrinsic_rewards)
+    #     mb_intrinsic_rewards.pop(0)
+    #     # batch of steps to batch of rollouts
+    #     mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype).swapaxes(1, 0).reshape(self.batch_ob_shape)
+    #     mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(0, 1)
+    #     mb_intrinsic_rewards = np.asarray(mb_intrinsic_rewards, dtype=np.float32).swapaxes(0, 1)
+    #     mb_actions = np.asarray(mb_actions, dtype=np.int32).swapaxes(0, 1)
+    #     mb_values = np.asarray(mb_values, dtype=np.float32).swapaxes(0, 1)
+    #     mb_dones = np.asarray(mb_dones, dtype=np.bool).swapaxes(0, 1)
+    #     mb_masks = mb_dones[:, :-1]
+    #     mb_dones = mb_dones[:, 1:]
+    #     true_rewards = np.copy(mb_rewards)
+    #     last_values = self.model.value(self.obs, self.states, self.dones).tolist()
+    #     # discount/bootstrap off value fn
+    #     for n, (rewards, intrinsic_rewards, dones, value) in enumerate(zip(mb_rewards, mb_intrinsic_rewards, mb_dones, last_values)):
+    #         rewards = rewards.tolist()
+    #         intrinsic_rewards = intrinsic_rewards.tolist()
+    #         dones = dones.tolist()
+    #         if dones[-1] == 0:
+    #             rewards = discount_with_dones(rewards + [value], dones + [0], self.gamma)[:-1]
+    #         else:
+    #             rewards = discount_with_dones(rewards, dones, self.gamma)
+    #         intrinsic_rewards = discount_with_dones(intrinsic_rewards, dones, self.gamma)
+    #         mb_rewards[n] = rewards
+    #         mb_intrinsic_rewards[n] = intrinsic_rewards
+    #     # print('mb_rewards', mb_rewards)
+    #     # convert from [n_env, n_steps, ...] to [n_steps * n_env, ...]
+    #     mb_rewards = mb_rewards.reshape(-1, *mb_rewards.shape[2:])
+    #     mb_actions = mb_actions.reshape(-1, *mb_actions.shape[2:])
+    #     mb_values = mb_values.reshape(-1, *mb_values.shape[2:])
+    #     mb_masks = mb_masks.reshape(-1, *mb_masks.shape[2:])
+    #
+    #     mb_intrinsic_rewards = mb_intrinsic_rewards.reshape(-1, *mb_intrinsic_rewards.shape[2:])
+    #     # print('mb_rewards', mb_rewards)
+    #     # print('mb_intrinsic_rewards', mb_intrinsic_rewards)
+    #     mb_rewards += mb_intrinsic_rewards
+    #     # print('mb_intrinsic_rewards+mb_rewards', mb_rewards)
+    #     with open('mb_intrinsic_rewards.txt', 'a') as file:
+    #         file.write('mb_intrinsic_rewards{}\n'.format(mb_intrinsic_rewards))
+    #         file.write('mb_rewards{}\n'.format(mb_rewards))
+    #     return mb_obs, mb_states, mb_rewards, mb_masks, mb_actions, mb_values, true_rewards

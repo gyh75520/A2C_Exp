@@ -7,7 +7,7 @@ from stable_baselines.common import set_global_seeds
 from stable_baselines import A2C
 from stable_baselines.common.atari_wrappers import make_atari
 '''
-using attention as intrinsic rewards
+using attention as intrinsic rewards , overwrite A2CRunner.run and a2c.py line 153
 '''
 
 

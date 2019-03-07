@@ -10,6 +10,8 @@ from A2C_attention import AttentionPolicy, LstmPolicy
 from A2C_attention2 import Attention2Policy
 from A2C_attention3 import Attention3Policy
 from A2C_attention4 import Attention4Policy
+from A2C_selfAttention import SelfAttentionLstmPolicy
+
 best_mean_reward, n_steps = -np.inf, 0
 
 
@@ -51,7 +53,9 @@ def run(model_name, env_name, num_cpu, log_dir):
     env = SubprocVecEnv([make_env(env_id, i, log_dir) for i in range(num_cpu)])
     # env = Monitor(env, log_dir, allow_early_resets=True)
 
-    if model_name == 'A2C_Attention':
+    if model_name == "A2C_SelfAttention":
+        model = model = A2C(SelfAttentionLstmPolicy, env, verbose=1)
+    elif model_name == 'A2C_Attention':
         model = A2C(AttentionPolicy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
     elif model_name == 'A2C_Attention2':
         model = A2C(Attention2Policy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
@@ -71,12 +75,14 @@ def run(model_name, env_name, num_cpu, log_dir):
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 env_name = 'Breakout'
 num_cpu = 4
+A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention_{}/'.format(env_name)
 A2C_Attention4_log_dir = 'attention_exp/A2C_Attention4_{}/'.format(env_name)
 A2C_Attention3_log_dir = 'attention_exp/A2C_Attention3_{}/'.format(env_name)
 A2C_Attention2_log_dir = 'attention_exp/A2C_Attention2_{}/'.format(env_name)
 A2C_Attention_log_dir = 'attention_exp/A2C_Attention_{}/'.format(env_name)
 A2C_log_dir = 'attention_exp/A2C_{}/'.format(env_name)
-run('A2C_Attention4', env_name, num_cpu, A2C_Attention4_log_dir)
+run('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
+# run('A2C_Attention4', env_name, num_cpu, A2C_Attention4_log_dir)
 # run('A2C_Attention3', env_name, num_cpu, A2C_Attention3_log_dir)
 # run('A2C_Attention2', env_name, num_cpu, A2C_Attention2_log_dir)
 # run('A2C_Attention', env_name, num_cpu, A2C_Attention_log_dir)
