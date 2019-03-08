@@ -46,8 +46,16 @@ def make_env(env_id, rank, log_dir, seed=0):
 
 
 def run(model_name, env_name, num_cpu, log_dir):
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    # if log_dir exists,auto add new dir by order
+    while os.path.exists(log_dir):
+        lastdir_name = log_dir.split('/')[-2]
+        times = int(lastdir_name.split('_')[-1])
+        old = '_{}'.format(times)
+        new = '_{}'.format(times + 1)
+        log_dir = log_dir.replace(old, new)
+    os.makedirs(log_dir)
+
+    print(("---------------Create dir:{} Successful!-------------\n").format(log_dir))
 
     env_id = env_name + 'NoFrameskip-v4'
     env = SubprocVecEnv([make_env(env_id, i, log_dir) for i in range(num_cpu)])
@@ -67,20 +75,24 @@ def run(model_name, env_name, num_cpu, log_dir):
         model = A2C(LstmPolicy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
     else:
         model = None
+
+    total_timesteps = int(1e7)
+    print(("---------------Modle:{} num_cpu:{} total_timesteps:{} Start to train!-------------").format(model_name, num_cpu, total_timesteps))
+
     # model.learn(total_timesteps=int(1e7), callback=callback)
-    model.learn(total_timesteps=int(1e7))
+    model.learn(total_timesteps=total_timesteps)
     model.save(log_dir + model_name + '_' + env_name)
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 env_name = 'Breakout'
 num_cpu = 4
-A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention_{}/'.format(env_name)
-A2C_Attention4_log_dir = 'attention_exp/A2C_Attention4_{}/'.format(env_name)
-A2C_Attention3_log_dir = 'attention_exp/A2C_Attention3_{}/'.format(env_name)
-A2C_Attention2_log_dir = 'attention_exp/A2C_Attention2_{}/'.format(env_name)
-A2C_Attention_log_dir = 'attention_exp/A2C_Attention_{}/'.format(env_name)
-A2C_log_dir = 'attention_exp/A2C_{}/'.format(env_name)
+A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention/{}_0/'.format(env_name)
+A2C_Attention4_log_dir = 'attention_exp/A2C_Attention4/{}_0/'.format(env_name)
+A2C_Attention3_log_dir = 'attention_exp/A2C_Attention3/{}_0/'.format(env_name)
+A2C_Attention2_log_dir = 'attention_exp/A2C_Attention2/{}_0/'.format(env_name)
+A2C_Attention_log_dir = 'attention_exp/A2C_Attention/{}_0/'.format(env_name)
+A2C_log_dir = 'attention_exp/A2C/{}_0/'.format(env_name)
 run('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
 # run('A2C_Attention4', env_name, num_cpu, A2C_Attention4_log_dir)
 # run('A2C_Attention3', env_name, num_cpu, A2C_Attention3_log_dir)
