@@ -6,13 +6,13 @@ from stable_baselines.a2c.utils import conv, linear, batch_to_seq, seq_to_batch,
 from stable_baselines.common import set_global_seeds
 from stable_baselines import A2C
 from stable_baselines.common.atari_wrappers import make_atari
-from utils import custom_cnn, MHDPA
+from utils import custom_cnn, MHDPA, linear_without_bias
 '''
-self Attention
+self attention + attention
 '''
 
 
-class SelfAttentionLstmPolicy(LstmPolicy):
+class DualAttentionLstmPolicy(LstmPolicy):
     __module__ = None
 
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, n_lstm=256, reuse=False, layers=None,
@@ -25,11 +25,54 @@ class SelfAttentionLstmPolicy(LstmPolicy):
         with tf.variable_scope("model", reuse=reuse):
             extracted_features = cnn_extractor(self.processed_x, **kwargs)  # # [B,H,W,Deepth]
             print('extracted_features', extracted_features)
+            last_num_height = extracted_features.shape[1]
+            last_num_width = extracted_features.shape[2]
+            # print(last_width)
+            last_num_features = extracted_features.shape[3]
+            n_hiddens = 42
 
             # [B,H*W,num_heads,Deepth]
-            MHDPA_output = MHDPA(extracted_features, "extracted_features", num_heads=2)
-            print(MHDPA_output)
+            num_heads = 2
+            MHDPA_output = MHDPA(extracted_features, "extracted_features", num_heads=num_heads)
+            MHDPA_output = tf.reshape(MHDPA_output, [-1, last_num_height, last_num_width, num_heads * last_num_features])
+            print('MHDPA_output', MHDPA_output)
 
+            x2 = tf.reshape(extracted_features, [-1, last_num_height * last_num_width, last_num_features])
+            print('x2', x2)
+            x3 = tf.nn.relu(conv(extracted_features, 'x3', n_filters=n_hiddens, filter_size=1, stride=1, init_scale=np.sqrt(2), **kwargs))
+            print('x3', x3)
+
+            print('states', self.states_ph)
+            # ob = [envs,steps] -- rnn_state = [envs]*steps
+            h0 = tf.expand_dims(self.states_ph, 1)
+            h0 = tf.tile(h0, [1, self.n_steps, 1])
+            print('h0', h0)
+            h0 = tf.reshape(h0, [-1, h0.shape[2]])
+            print('h0', h0)
+            h1 = linear_without_bias(h0, 'fc_h1', n_hidden=n_hiddens, init_scale=np.sqrt(2))
+            print('h1', h1)
+            # replicate [1,n_hiddens] to [1,22*16,n_hiddens]
+            h2 = tf.expand_dims(h1, 1)
+            h2 = tf.tile(h2, [1, last_num_height * last_num_width, 1])
+            print('h2', h2)
+
+            h3 = tf.reshape(h2, [-1, last_num_height, last_num_width, n_hiddens])
+            print('h3', h3)
+
+            a1 = tf.nn.tanh(tf.add(h3, x3))
+            a2 = tf.nn.relu(conv(a1, 'a2', n_filters=1, filter_size=1, stride=1, init_scale=np.sqrt(2), **kwargs))
+            print('a2', a2)
+
+            a3 = tf.nn.softmax(tf.reshape(a2, [-1, last_num_height * last_num_width]))  # attetion
+            print('a3', a3)
+            self.attention = a3
+
+            a4 = tf.expand_dims(a3, 2)
+            a4 = tf.tile(a4, [1, 1, last_num_features])
+            print('a4', a4)
+
+            context = tf.reduce_sum(tf.multiply(a4, x2), 2)
+            print('context', context)
             input_sequence = batch_to_seq(MHDPA_output, self.n_env, n_steps)
             # input_sequence = batch_to_seq(extracted_features, self.n_env, n_steps)
             masks = batch_to_seq(self.masks_ph, self.n_env, n_steps)
@@ -84,7 +127,7 @@ if __name__ == '__main__':
     env = SubprocVecEnv([make_env(env_id, i) for i in range(num_cpu)])
     # env = VecFrameStack(env, n_stack=4)
     # print(env.observation_space.shape)
-    model = A2C(SelfAttentionLstmPolicy, env, verbose=1)
+    model = A2C(DualAttentionLstmPolicy, env, verbose=1)
     model.learn(total_timesteps=1000)
     # model.save("A2C_Attention_breakout")
     # del model
