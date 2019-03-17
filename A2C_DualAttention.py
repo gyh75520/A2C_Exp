@@ -6,7 +6,7 @@ from stable_baselines.a2c.utils import conv, linear, batch_to_seq, seq_to_batch,
 from stable_baselines.common import set_global_seeds
 from stable_baselines import A2C
 from stable_baselines.common.atari_wrappers import make_atari
-from utils import custom_cnn, MHDPA, linear_without_bias
+from utils import nature_cnn, MHDPA, linear_without_bias
 '''
 self attention + attention
 '''
@@ -16,7 +16,7 @@ class DualAttentionLstmPolicy(LstmPolicy):
     __module__ = None
 
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, n_lstm=256, reuse=False, layers=None,
-                 cnn_extractor=custom_cnn, layer_norm=False, feature_extraction="cnn", **kwargs):
+                 cnn_extractor=nature_cnn, layer_norm=False, feature_extraction="cnn", **kwargs):
         # super(LstmPolicy, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, n_lstm, reuse,
         #                                  scale=(feature_extraction == "cnn"))
         # add this function to LstmPolicy to init ActorCriticPolicy

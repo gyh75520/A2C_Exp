@@ -1,4 +1,4 @@
-from stable_baselines.common.atari_wrappers import make_atari
+from stable_baselines.common.atari_wrappers import make_atari, wrap_deepmind, wrap_boxworld
 from stable_baselines.common import set_global_seeds
 from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines.bench import Monitor
@@ -12,6 +12,9 @@ from A2C_attention3 import Attention3Policy
 from A2C_attention4 import Attention4Policy
 from A2C_selfAttention import SelfAttentionLstmPolicy
 from A2C_DualAttention import DualAttentionLstmPolicy
+import gym_boxworld
+
+
 best_mean_reward, n_steps = -np.inf, 0
 
 
@@ -37,6 +40,11 @@ def callback(_locals, _globals):
 def make_env(env_id, rank, log_dir, seed=0):
     def _init():
         env = make_atari(env_id)
+        if 'BoxWorld' in env_id:
+            print('using wrap_boxworld!')
+            env = wrap_boxworld(env, episode_life=False, clip_rewards=True, frame_stack=True, scale=True)
+        else:
+            env = wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=True, scale=True)
         env = Monitor(env, log_dir + str(rank), allow_early_resets=True)
         env.seed(seed + rank)
         return env
@@ -61,9 +69,9 @@ def run(model_name, env_name, num_cpu, log_dir):
     env = SubprocVecEnv([make_env(env_id, i, log_dir) for i in range(num_cpu)])
     # env = Monitor(env, log_dir, allow_early_resets=True)
     if model_name == "A2C_DualAttention":
-        model = model = A2C(DualAttentionLstmPolicy, env, verbose=1)
+        model = A2C(DualAttentionLstmPolicy, env, verbose=1)
     elif model_name == "A2C_SelfAttention":
-        model = model = A2C(SelfAttentionLstmPolicy, env, verbose=1)
+        model = A2C(SelfAttentionLstmPolicy, env, verbose=1)
     elif model_name == 'A2C_Attention':
         model = A2C(AttentionPolicy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
     elif model_name == 'A2C_Attention2':
@@ -86,7 +94,7 @@ def run(model_name, env_name, num_cpu, log_dir):
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-env_name = 'Breakout'
+env_name = 'BoxWorld'
 num_cpu = 4
 A2C_DualAttention_log_dir = 'attention_exp/A2C_DualAttention/{}_0/'.format(env_name)
 A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention/{}_0/'.format(env_name)

@@ -119,7 +119,7 @@ class MaxAndSkipEnv(gym.Wrapper):
         """
         gym.Wrapper.__init__(self, env)
         # most recent raw observations (for max pooling across time steps)
-        self._obs_buffer = np.zeros((2,)+env.observation_space.shape, dtype=env.observation_space.dtype)
+        self._obs_buffer = np.zeros((2,) + env.observation_space.shape, dtype=env.observation_space.dtype)
         self._skip = skip
 
     def step(self, action):
@@ -304,6 +304,51 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
     if 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     env = WarpFrame(env)
+    if scale:
+        env = ScaledFloatFrame(env)
+    if clip_rewards:
+        env = ClipRewardEnv(env)
+    if frame_stack:
+        env = FrameStack(env, 4)
+    return env
+
+
+class WarpBoxworldFrame(gym.ObservationWrapper):
+    # custom 140,140
+    def __init__(self, env):
+        """
+        Warp frames to 84x84 as done in the Nature paper and later work.
+
+        :param env: (Gym Environment) the environment
+        """
+        gym.ObservationWrapper.__init__(self, env)
+        self.width = 140  # custom
+        self.height = 140  # custom
+        self.observation_space = spaces.Box(low=0, high=255, shape=(self.height, self.width, 1),
+                                            dtype=env.observation_space.dtype)
+
+    def observation(self, frame):
+        """
+        returns the current observation from a frame
+
+        :param frame: ([int] or [float]) environment frame
+        :return: ([int] or [float]) the observation
+        """
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
+        return frame[:, :, None]
+
+
+def wrap_boxworld(env, episode_life=False, clip_rewards=True, frame_stack=False, scale=False):
+    """
+    do not need EpisodicLifeEnv,FireResetEnv
+    need  WarpBoxworldFrame and other
+    """
+    if episode_life:
+        env = EpisodicLifeEnv(env)
+    if 'FIRE' in env.unwrapped.get_action_meanings():
+        env = FireResetEnv(env)
+    env = WarpBoxworldFrame(env)
     if scale:
         env = ScaledFloatFrame(env)
     if clip_rewards:
