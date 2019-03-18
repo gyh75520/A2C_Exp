@@ -58,7 +58,7 @@ class BoxWoldEnv(gym.Env):
         self.action_pos_dict = {0: [0, 0], 1: [-1, 0], 2: [1, 0], 3: [0, -1], 4: [0, 1]}
 
         # set observation space
-        self.obs_shape = [14, 14, 3]
+        self.obs_shape = [140, 140, 3]
         self.observation_space = spaces.Box(low=0, high=255, shape=self.obs_shape, dtype=np.uint8)
 
         # initialize system
