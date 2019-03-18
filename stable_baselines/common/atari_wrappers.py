@@ -284,7 +284,8 @@ def make_atari(env_id):
     env = gym.make(env_id)
     assert 'NoFrameskip' in env.spec.id
     env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
+    if 'BoxWorld' not in env_id:
+        env = MaxAndSkipEnv(env, skip=4)
     return env
 
 

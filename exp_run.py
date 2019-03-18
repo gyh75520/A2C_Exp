@@ -6,7 +6,8 @@ from stable_baselines.results_plotter import load_results, ts2xy
 import os
 import numpy as np
 from stable_baselines import A2C
-from A2C_attention import AttentionPolicy, LstmPolicy
+from stable_baselines.common.policies import CnnLstmPolicy
+from A2C_attention import AttentionPolicy
 from A2C_attention2 import Attention2Policy
 from A2C_attention3 import Attention3Policy
 from A2C_attention4 import Attention4Policy
@@ -42,9 +43,9 @@ def make_env(env_id, rank, log_dir, seed=0):
         env = make_atari(env_id)
         if 'BoxWorld' in env_id:
             print('using wrap_boxworld!')
-            env = wrap_boxworld(env, episode_life=False, clip_rewards=True, frame_stack=True, scale=True)
+            env = wrap_boxworld(env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False)
         else:
-            env = wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=True, scale=True)
+            env = wrap_deepmind(env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False)
         env = Monitor(env, log_dir + str(rank), allow_early_resets=True)
         env.seed(seed + rank)
         return env
@@ -81,7 +82,7 @@ def run(model_name, env_name, num_cpu, log_dir):
     elif model_name == 'A2C_Attention4':
         model = A2C(Attention4Policy, env, verbose=1)
     elif model_name == 'A2C':
-        model = A2C(LstmPolicy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
+        model = A2C(CnnLstmPolicy, env, verbose=1)
     else:
         model = None
 
@@ -94,7 +95,7 @@ def run(model_name, env_name, num_cpu, log_dir):
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-env_name = 'BoxWorld'
+env_name = 'Seaquest'
 num_cpu = 4
 A2C_DualAttention_log_dir = 'attention_exp/A2C_DualAttention/{}_0/'.format(env_name)
 A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention/{}_0/'.format(env_name)
@@ -104,8 +105,8 @@ A2C_Attention2_log_dir = 'attention_exp/A2C_Attention2/{}_0/'.format(env_name)
 A2C_Attention_log_dir = 'attention_exp/A2C_Attention/{}_0/'.format(env_name)
 A2C_log_dir = 'attention_exp/A2C/{}_0/'.format(env_name)
 
-run('A2C_DualAttention', env_name, num_cpu, A2C_DualAttention_log_dir)
-# run('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
+# run('A2C_DualAttention', env_name, num_cpu, A2C_DualAttention_log_dir)
+run('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
 # run('A2C_Attention4', env_name, num_cpu, A2C_Attention4_log_dir)
 # run('A2C_Attention3', env_name, num_cpu, A2C_Attention3_log_dir)
 # run('A2C_Attention2', env_name, num_cpu, A2C_Attention2_log_dir)

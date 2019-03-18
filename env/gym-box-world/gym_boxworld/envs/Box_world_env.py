@@ -120,13 +120,13 @@ class BoxWoldEnv(gym.Env):
         if nxt_color > 2:
             # pick up the content of the box(single pixel)
             if nxt_left_color < 3:
-                if self.key == 3:
+                if nxt_color == 3:
                     reward = 10
                     done = True
                     info['success'] = True
                     self._update_key(nxt_color)
                     self._agent_move(next_agent_state)
-                    self.observation = self.reset()
+                    # self.observation = self.reset()
                     return (self.observation, reward, done, info)
                 else:
                     reward = 0
@@ -150,7 +150,7 @@ class BoxWoldEnv(gym.Env):
                     done = True
                     self._update_key(0)
                     self._agent_move(next_agent_state)
-                    self.observation = self.reset()
+                    # self.observation = self.reset()
                     return (self.observation, reward, done, info)
                 self._update_key(0)
                 self._agent_move(next_agent_state)
