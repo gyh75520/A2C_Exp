@@ -53,8 +53,12 @@ class BoxWoldEnv(gym.Env):
 
     def __init__(self):
         self.seed()
-        self._action_set = [0, 2, 3, 4, 5]
-        self.action_space = spaces.Discrete(len(self._action_set))
+        # self._action_set = [0, 2, 3, 4, 5]
+        # self.action_space = spaces.Discrete(len(self._action_set))
+        # self.action_pos_dict = {0: [0, 0], 1: [-1, 0], 2: [1, 0], 3: [0, -1], 4: [0, 1]}
+        # ignore noop action
+        self._action_set = [2, 3, 4, 5]
+        self.action_space = spaces.Discrete(len(self._action_set) - 1)
         self.action_pos_dict = {0: [0, 0], 1: [-1, 0], 2: [1, 0], 3: [0, -1], 4: [0, 1]}
 
         # set observation space
@@ -97,7 +101,7 @@ class BoxWoldEnv(gym.Env):
     def step(self, action):
         info = {}
         info['success'] = False
-        action = int(action)
+        action = int(action) + 1  # ignore noop action
         next_agent_state = [self.agent_current_state[0] + self.action_pos_dict[action][0], self.agent_current_state[1] + self.action_pos_dict[action][1]]
 
         if action == 0:
