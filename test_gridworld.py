@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from stable_baselines.common.atari_wrappers import make_atari, wrap_deepmind, wrap_boxworld
 
 
-env_name = 'BoxWorld'
+env_name = 'Breakout'
 env_id = env_name + 'NoFrameskip-v4'
 print(env_id)
 env = make_atari(env_id)
@@ -21,9 +21,9 @@ observation = env.reset()
 print(env.action_space)
 i = 0
 for i in range(10000):
-    observation, reward, done, info = env.step(int(input("input")))
-    if done:
-        observation = env.reset()
+    observation, reward, done, info = env.step(env.action_space.sample())
+    # if done:
+    #     observation = env.reset()
     print(reward, done, info)
     # observation = np.array(observation)
     # print(observation.shape)

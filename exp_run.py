@@ -41,17 +41,37 @@ def callback(_locals, _globals):
 def make_env(env_id, rank, log_dir, seed=0):
     def _init():
         env = make_atari(env_id)
-        if 'BoxWorld' in env_id:
-            print('using wrap_boxworld!')
-            env = wrap_boxworld(env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False)
-        else:
-            env = wrap_deepmind(env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False)
+        # if 'BoxWorld' in env_id:
+        #     print('using wrap_boxworld!')
+        #     env = wrap_boxworld(env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False)
+        # else:
+        #     env = wrap_deepmind(env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False)
         env = Monitor(env, log_dir + str(rank), allow_early_resets=True)
         env.seed(seed + rank)
         return env
 
     set_global_seeds(seed)
     return _init
+
+
+def get_model(model_name, env, log_dir):
+    if model_name == "A2C_DualAttention":
+        model = A2C(DualAttentionLstmPolicy, env, verbose=1)
+    elif model_name == "A2C_SelfAttention":
+        model = A2C(SelfAttentionLstmPolicy, env, verbose=1)
+    elif model_name == 'A2C_Attention':
+        model = A2C(AttentionPolicy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
+    elif model_name == 'A2C_Attention2':
+        model = A2C(Attention2Policy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
+    elif model_name == 'A2C_Attention3':
+        model = A2C(Attention3Policy, env, verbose=1)
+    elif model_name == 'A2C_Attention4':
+        model = A2C(Attention4Policy, env, verbose=1)
+    elif model_name == 'A2C':
+        model = A2C(CnnLstmPolicy, env, verbose=1)
+    else:
+        raise('{} Not Exist'.format(model_name))
+    return model
 
 
 def run(model_name, env_name, num_cpu, log_dir):
@@ -69,24 +89,9 @@ def run(model_name, env_name, num_cpu, log_dir):
     env_id = env_name + 'NoFrameskip-v4'
     env = SubprocVecEnv([make_env(env_id, i, log_dir) for i in range(num_cpu)])
     # env = Monitor(env, log_dir, allow_early_resets=True)
-    if model_name == "A2C_DualAttention":
-        model = A2C(DualAttentionLstmPolicy, env, verbose=1)
-    elif model_name == "A2C_SelfAttention":
-        model = A2C(SelfAttentionLstmPolicy, env, verbose=1)
-    elif model_name == 'A2C_Attention':
-        model = A2C(AttentionPolicy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
-    elif model_name == 'A2C_Attention2':
-        model = A2C(Attention2Policy, env, verbose=1, tensorboard_log=log_dir + 'tensorboard/')
-    elif model_name == 'A2C_Attention3':
-        model = A2C(Attention3Policy, env, verbose=1)
-    elif model_name == 'A2C_Attention4':
-        model = A2C(Attention4Policy, env, verbose=1)
-    elif model_name == 'A2C':
-        model = A2C(CnnLstmPolicy, env, verbose=1)
-    else:
-        model = None
+    model = get_model(model_name, env, log_dir)
 
-    total_timesteps = int(1e7)
+    total_timesteps = int(2e3)
     print(("---------------Modle:{} num_cpu:{} total_timesteps:{} Start to train!-------------").format(model_name, num_cpu, total_timesteps))
 
     # model.learn(total_timesteps=int(1e7), callback=callback)
@@ -94,8 +99,29 @@ def run(model_name, env_name, num_cpu, log_dir):
     model.save(log_dir + model_name + '_' + env_name)
 
 
+def test(model_name, env_name, num_cpu, log_dir):
+    env_id = env_name + 'NoFrameskip-v4'
+    env = SubprocVecEnv([make_env(env_id, i, log_dir) for i in range(num_cpu)])
+    # env = Monitor(env, log_dir, allow_early_resets=True)
+    model = get_model(model_name, env, log_dir)
+
+    model = model.load(log_dir + model_name + '_' + env_name, env=env)
+    obs = env.reset()
+    from matplotlib import pyplot as plt
+    while True:
+        action, _states = model.predict(obs)
+        obs, rewards, done, info = env.step(action)
+        # env.render()
+        img = obs[0, :, :, :]
+        fig = plt.figure(0)
+        plt.clf()
+        plt.imshow(img / 255)
+        fig.canvas.draw()
+        plt.pause(0.000001)
+
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-env_name = 'Seaquest'
+env_name = 'BoxWorld'
 num_cpu = 4
 A2C_DualAttention_log_dir = 'attention_exp/A2C_DualAttention/{}_0/'.format(env_name)
 A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention/{}_0/'.format(env_name)

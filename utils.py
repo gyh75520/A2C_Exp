@@ -285,8 +285,6 @@ if __name__ == '__main__':
     # ax = sns.tsplot(time="timepoint", value="BOLD signal", unit="subject", condition="ROI", data=gammas)
 
     # tsplot_result(log_dirs=['test/CartPole/', 'test/dqn_breakout/'])
-    log_dirs = {'A2C_Attention': ['attention_exp1/A2C_Attention_Qbert1'], 'A2C': ['attention_exp1/A2C_Qbert', 'attention_exp1/A2C_Qbert1']}
-    tsplot_result(log_dirs_dict=log_dirs, num_timesteps=int(1e7))
 
     # print(np.cumsum(load_results('test/').l))P
     # from stable_baselines.results_plotter import plot_results
@@ -306,5 +304,12 @@ if __name__ == '__main__':
     #            # ci=[40, 70, 90],       # 设置误差 置信区间
     #            color='g'            # 设置颜色
     #            )
+    algs = ['A2C', 'A2C_SelfAttention']
+    env_name = 'BoxWorld'
+    log_dirs = {}
+    for alg in algs:
+        log_dirs[alg] = ['attention_exp/{}/{}_0'.format(alg, env_name)]
+    # log_dirs = {'A2C_Attention': ['attention_exp1/A2C_Attention_Qbert1'], 'A2C': ['attention_exp1/A2C_Qbert', 'attention_exp1/A2C_Qbert1']}
+    tsplot_result(log_dirs_dict=log_dirs, num_timesteps=int(1e7))
     plt.show()
     print('end')
