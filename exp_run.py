@@ -38,7 +38,7 @@ def callback(_locals, _globals):
     return False
 
 
-def make_env(env_id, rank, log_dir, seed=0):
+def make_env(env_id, rank, log_dir, useMonitor=True, seed=0):
     def _init():
         env = make_atari(env_id)
         # if 'BoxWorld' in env_id:
@@ -46,7 +46,8 @@ def make_env(env_id, rank, log_dir, seed=0):
         #     env = wrap_boxworld(env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False)
         # else:
         #     env = wrap_deepmind(env, episode_life=False, clip_rewards=False, frame_stack=False, scale=False)
-        env = Monitor(env, log_dir + str(rank), allow_early_resets=True)
+        if useMonitor:
+            env = Monitor(env, log_dir + str(rank), allow_early_resets=True)
         env.seed(seed + rank)
         return env
 
@@ -91,7 +92,7 @@ def run(model_name, env_name, num_cpu, log_dir):
     # env = Monitor(env, log_dir, allow_early_resets=True)
     model = get_model(model_name, env, log_dir)
 
-    total_timesteps = int(2e3)
+    total_timesteps = int(1e7)
     print(("---------------Modle:{} num_cpu:{} total_timesteps:{} Start to train!-------------").format(model_name, num_cpu, total_timesteps))
 
     # model.learn(total_timesteps=int(1e7), callback=callback)
@@ -101,7 +102,7 @@ def run(model_name, env_name, num_cpu, log_dir):
 
 def test(model_name, env_name, num_cpu, log_dir):
     env_id = env_name + 'NoFrameskip-v4'
-    env = SubprocVecEnv([make_env(env_id, i, log_dir) for i in range(num_cpu)])
+    env = SubprocVecEnv([make_env(env_id, i, log_dir, useMonitor=False) for i in range(num_cpu)])
     # env = Monitor(env, log_dir, allow_early_resets=True)
     model = get_model(model_name, env, log_dir)
 
