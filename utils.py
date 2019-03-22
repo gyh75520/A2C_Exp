@@ -84,6 +84,29 @@ def layerNorm(input_tensor, scope, eps=1e-5):
         return normalized
 
 
+def get_coor(input_tensor):
+    """
+    The output of cnn is tagged with two extra channels indicating the spatial position(x and y) of each cell
+
+    :param input_tensor: (TensorFlow Tensor) The input tensor from NN [B,Height,W,D]
+    :return: (TensorFlow Tensor) [B,Height,W,2]
+    """
+    batch_size = input_tensor.get_shape()[0].value
+    height = input_tensor.get_shape()[1].value
+    width = input_tensor.get_shape()[2].value
+    coor = []
+    for h in range(height):
+        w_channel = []
+        for w in range(width):
+            w_channel.append([float(h / height), float(w / width)])
+        coor.append(w_channel)
+
+    coor = tf.expand_dims(tf.constant(coor, dtype=input_tensor.dtype), axis=0)
+    # [1,Height,W,2] --> [B,Height,W,2]
+    coor = tf.tile(coor, [batch_size, 1, 1, 1])
+    return coor
+
+
 def MHDPA(input_tensor, scope, num_heads):
     """
     An implementation of the Multi-Head Dot-Product Attention architecture in "Relational Deep Reinforcement Learning"
@@ -132,6 +155,30 @@ def MHDPA(input_tensor, scope, num_heads):
         output_transpose = tf.transpose(output, [0, 2, 1, 3])
 
         return output_transpose
+
+
+def residual_block(x, y):
+    """
+    Z = W*y + x
+    :param x: (TensorFlow Tensor) The input tensor from NN [B,Height,W,D]
+    :param y: (TensorFlow Tensor) The input tensor from MHDPA [B,Height*W,num_heads,D]
+    :return: (TensorFlow Tensor) [B,Height*W,num_heads,D]
+    """
+    last_num_height = x.get_shape()[1].value
+    last_num_width = x.get_shape()[2].value
+    last_num_features = x.get_shape()[3].value
+    # W*y
+    y_Matmul_W = conv(y, 'y_Matmul_W', n_filters=last_num_features, filter_size=1, stride=1, init_scale=np.sqrt(2))
+    print('y_Matmul_W', y_Matmul_W)
+    # [B,Height,W,D] --> [B,Height*W,D]
+    x_reshape = tf.reshape(x, [-1, last_num_width * last_num_height, last_num_features])
+    x_edims = tf.expand_dims(x_reshape, axis=2)
+    num_heads = y.get_shape()[2]
+    # [B,Height,W,D] --> [B,Height*W,H,D]
+    x_edims = tf.tile(x_edims, [1,  1, num_heads, 1])
+    # W*y + x
+    residual_output = tf.add(y_Matmul_W, x_edims)
+    return residual_output
 
 # def subsample(t, vt, bins):
 #     """Given a data such that value vt[i] was observed at time t[i],

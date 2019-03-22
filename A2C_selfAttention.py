@@ -6,7 +6,7 @@ from stable_baselines.a2c.utils import conv, linear, batch_to_seq, seq_to_batch,
 from stable_baselines.common import set_global_seeds
 from stable_baselines import A2C
 from stable_baselines.common.atari_wrappers import make_atari
-from utils import nature_cnn, MHDPA
+from utils import nature_cnn, get_coor, MHDPA, residual_block
 '''
 self Attention using nature_cnn
 '''
@@ -25,12 +25,22 @@ class SelfAttentionLstmPolicy(LstmPolicy):
         with tf.variable_scope("model", reuse=reuse):
             extracted_features = cnn_extractor(self.processed_x, **kwargs)  # # [B,H,W,Deepth]
             print('extracted_features', extracted_features)
-
+            coor = get_coor(extracted_features)
+            # [B,Height,W,D+2]
+            entities = tf.concat([extracted_features, coor], axis=3)
+            print('entities:', entities)
+            # [B,H*W,num_heads,Deepth=D+2]
+            MHDPA_output = MHDPA(entities, "extracted_features", num_heads=2)
+            print('MHDPA_output', MHDPA_output)
             # [B,H*W,num_heads,Deepth]
-            MHDPA_output = MHDPA(extracted_features, "extracted_features", num_heads=2)
-            print(MHDPA_output)
+            residual_output = residual_block(entities, MHDPA_output)
+            print('residual_output', residual_output)
 
-            input_sequence = batch_to_seq(MHDPA_output, self.n_env, n_steps)
+            # max_pooling
+            residual_maxpooling_output = tf.reduce_max(residual_output, axis=[1])
+
+            print('residual_maxpooling_output', residual_maxpooling_output)
+            input_sequence = batch_to_seq(residual_maxpooling_output, self.n_env, n_steps)
             # input_sequence = batch_to_seq(extracted_features, self.n_env, n_steps)
             masks = batch_to_seq(self.masks_ph, self.n_env, n_steps)
             rnn_output, self.snew = lstm(input_sequence, masks, self.states_ph, 'lstm1', n_hidden=n_lstm,
