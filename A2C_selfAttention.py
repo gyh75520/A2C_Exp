@@ -9,6 +9,7 @@ from stable_baselines.common.atari_wrappers import make_atari
 from utils import nature_cnn, get_coor, MHDPA, residual_block
 '''
 self Attention using nature_cnn
+v1 : add weight visual
 '''
 
 
@@ -30,8 +31,9 @@ class SelfAttentionLstmPolicy(LstmPolicy):
             entities = tf.concat([extracted_features, coor], axis=3)
             print('entities:', entities)
             # [B,H*W,num_heads,Deepth=D+2]
-            MHDPA_output = MHDPA(entities, "extracted_features", num_heads=2)
+            MHDPA_output, weights = MHDPA(entities, "extracted_features", num_heads=2)
             print('MHDPA_output', MHDPA_output)
+            self.attention = weights
             # [B,H*W,num_heads,Deepth]
             residual_output = residual_block(entities, MHDPA_output)
             print('residual_output', residual_output)

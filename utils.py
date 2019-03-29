@@ -154,7 +154,7 @@ def MHDPA(input_tensor, scope, num_heads):
         # [B,H,N,V] -> [B,N,H,V]
         output_transpose = tf.transpose(output, [0, 2, 1, 3])
 
-        return output_transpose
+        return output_transpose, weights
 
 
 def residual_block(x, y):
