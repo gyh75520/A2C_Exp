@@ -62,7 +62,8 @@ class BoxWoldEnv(gym.Env):
         self.action_pos_dict = {0: [0, 0], 1: [-1, 0], 2: [1, 0], 3: [0, -1], 4: [0, 1]}
 
         # set observation space
-        self.obs_shape = [140, 140, 3]
+        self.box_size = 14
+        self.obs_shape = [self.box_size * 10, self.box_size * 10, 3]
         self.observation_space = spaces.Box(low=0, high=255, shape=self.obs_shape, dtype=np.uint8)
 
         # initialize system
@@ -180,6 +181,11 @@ class BoxWoldEnv(gym.Env):
         agent = list(map(lambda x: x[0], location))
         return agent
 
+    def get_current_agent_position(self):
+        # from 2d(x,y) to 1d
+        position = self.agent_current_state[0] * self.box_size + self.agent_current_state[1]
+        return position
+
     def _read_world_map(self, path):
         with open(path, 'r') as f:
             world_map = f.readlines()
@@ -220,6 +226,8 @@ if __name__ == '__main__':
 
     while True:
         observation, reward, done, info = env.step(input("input"))
+        print(env.agent_current_state)
+        print(env.get_current_agent_position())
         # observation, reward, done, info = env.step(env.action_space.sample())
         print(reward, done, info)
         env.render()

@@ -107,17 +107,29 @@ def test(model_name, env_name, num_cpu, log_dir):
     model = get_model(model_name, env, log_dir)
 
     model = model.load(log_dir + model_name + '_' + env_name, env=env)
+
     obs = env.reset()
     from matplotlib import pyplot as plt
     while True:
         action, _states = model.predict(obs)
         obs, rewards, done, info = env.step(action)
-        # env.render()
         img = obs[0, :, :, :]
         fig = plt.figure(0)
         plt.clf()
         plt.imshow(img / 255)
         fig.canvas.draw()
+
+        if model_name == 'A2C_SelfAttention'and env_name == 'BoxWorld':
+            agent_position = env.env_method('get_current_agent_position')[0]
+            print('agent_position:', agent_position)
+            attention = model.get_attention(obs, _states, done)[0]
+            attention = attention[0][0][agent_position]
+            attention = np.reshape(attention, [14, 14])
+            fig = plt.figure(1)
+            plt.clf()
+            plt.imshow(attention, cmap='gray')
+            fig.canvas.draw()
+        # env.render()
         plt.pause(0.000001)
 
 
@@ -133,10 +145,12 @@ A2C_Attention_log_dir = 'attention_exp/A2C_Attention/{}_0/'.format(env_name)
 A2C_log_dir = 'attention_exp/A2C/{}_0/'.format(env_name)
 
 # run('A2C_DualAttention', env_name, num_cpu, A2C_DualAttention_log_dir)
-run('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
+# run('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
 # run('A2C_Attention4', env_name, num_cpu, A2C_Attention4_log_dir)
 # run('A2C_Attention3', env_name, num_cpu, A2C_Attention3_log_dir)
 # run('A2C_Attention2', env_name, num_cpu, A2C_Attention2_log_dir)
 # run('A2C_Attention', env_name, num_cpu, A2C_Attention_log_dir)
 # run('A2C', env_name, num_cpu, A2C_log_dir)
 print('finish')
+
+test('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
