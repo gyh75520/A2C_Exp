@@ -286,7 +286,7 @@ def make_atari(env_id):
     if 'NOOP' in env.unwrapped.get_action_meanings():
         print('using NoopResetEnv')
         env = NoopResetEnv(env, noop_max=30)
-    if 'BoxWorld' not in env_id:
+    if 'Box' and 'World' not in env_id:
         env = MaxAndSkipEnv(env, skip=4)
     return env
 
