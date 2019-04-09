@@ -123,9 +123,18 @@ def test(model_name, env_name, num_cpu, log_dir):
             agent_position = env.env_method('get_current_agent_position')[0]
             print('agent_position:', agent_position)
             attention = model.get_attention(obs, _states, done)[0]
+            # head_0
             attention = attention[0][0][agent_position]
             attention = np.reshape(attention, [14, 14])
-            fig = plt.figure(1)
+            fig = plt.figure(2)
+            plt.clf()
+            plt.imshow(attention, cmap='gray')
+            fig.canvas.draw()
+
+            # head_1
+            attention = attention[0][1][agent_position]
+            attention = np.reshape(attention, [14, 14])
+            fig = plt.figure(2)
             plt.clf()
             plt.imshow(attention, cmap='gray')
             fig.canvas.draw()
