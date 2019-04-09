@@ -164,21 +164,28 @@ class BoxWoldRandEnv(gym.Env):
                     # self.observation = self.reset()
                     return (self.observation, reward, done, info)
                 else:
-                    reward = 0
+                    reward = 1
                     done = False
                     self._update_key(nxt_color)
                     self._agent_move(next_agent_state)
                     return (self.observation, reward, done, info)
-                self._update_key(nxt_color)
-                self._agent_move(next_agent_state)
-                return (self.observation, reward, done, info)
+
             # unlock the box
             elif self.key == nxt_color:
                 if nxt_left_color in self.CorrectBox_lists:
-                    reward = 1
-                    done = False
-                    self._update_key(0)
+                    if nxt_left_color == 3:
+                        reward = 10
+                        done = True
+                        info['success'] = True
+                    else:
+                        reward = 1
+                        done = False
+                    # add for simple env
+                    self.current_world_map[next_agent_state[0], next_agent_state[1] - 1] = 1
+                    # change self._update_key(0) for simple env
+                    self._update_key(nxt_left_color)
                     self._agent_move(next_agent_state)
+
                     return (self.observation, reward, done, info)
                 else:
                     reward = -1
@@ -187,9 +194,7 @@ class BoxWoldRandEnv(gym.Env):
                     self._agent_move(next_agent_state)
                     # self.observation = self.reset()
                     return (self.observation, reward, done, info)
-                self._update_key(0)
-                self._agent_move(next_agent_state)
-                return (self.observation, reward, done, info)
+
             return (self.observation, 0, False, info)
 
         self._agent_move(next_agent_state)

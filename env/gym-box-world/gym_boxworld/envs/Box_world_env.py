@@ -134,14 +134,12 @@ class BoxWoldEnv(gym.Env):
                     # self.observation = self.reset()
                     return (self.observation, reward, done, info)
                 else:
-                    reward = 0
+                    reward = 1
                     done = False
                     self._update_key(nxt_color)
                     self._agent_move(next_agent_state)
                     return (self.observation, reward, done, info)
-                self._update_key(nxt_color)
-                self._agent_move(next_agent_state)
-                return (self.observation, reward, done, info)
+
             # unlock the box
             elif self.key == nxt_color:
                 if nxt_left_color in self.CorrectBox_lists:
@@ -157,9 +155,7 @@ class BoxWoldEnv(gym.Env):
                     self._agent_move(next_agent_state)
                     # self.observation = self.reset()
                     return (self.observation, reward, done, info)
-                self._update_key(0)
-                self._agent_move(next_agent_state)
-                return (self.observation, reward, done, info)
+
             return (self.observation, 0, False, info)
 
         self._agent_move(next_agent_state)
