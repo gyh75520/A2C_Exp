@@ -113,13 +113,18 @@ def test(model_name, env_name, num_cpu, log_dir):
     while True:
         action, _states = model.predict(obs)
         obs, rewards, done, info = env.step(action)
-        img = obs[0, :, :, :]
-        fig = plt.figure(0)
-        plt.clf()
-        plt.imshow(img / 255)
+        img = obs[1, :, :, :]
+        # fig = plt.figure(0)
+        rows = 2
+        cols = num_cpu // rows
+        fig, axarr = plt.subplots(rows, cols, num=0)
+        # axarr[0][0].cla()
+        for r in range(rows):
+            for c in range(cols):
+                axarr[r][c].imshow(img / 255)
         fig.canvas.draw()
 
-        if model_name == 'A2C_SelfAttention' and 'Box' in env_name and 'World' in env_name:
+        if model_name == 'A2C_SelfAttention'and 'Box' in env_name and 'World' in env_name:
             agent_position = env.env_method('get_current_agent_position')[0]
             print('agent_position:', agent_position)
             attention = model.get_attention(obs, _states, done)[0]
@@ -134,7 +139,7 @@ def test(model_name, env_name, num_cpu, log_dir):
             # head_1
             attention1 = attention[0][1][agent_position]
             attention1 = np.reshape(attention1, [14, 14])
-            fig = plt.figure(2)
+            fig = plt.figure(3)
             plt.clf()
             plt.imshow(attention1, cmap='gray')
             fig.canvas.draw()
