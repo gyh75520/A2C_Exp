@@ -119,24 +119,24 @@ def test(model_name, env_name, num_cpu, log_dir):
         plt.imshow(img / 255)
         fig.canvas.draw()
 
-        if model_name == 'A2C_SelfAttention'and env_name == 'BoxWorld':
+        if model_name == 'A2C_SelfAttention' and 'Box' in env_name and 'World' in env_name:
             agent_position = env.env_method('get_current_agent_position')[0]
             print('agent_position:', agent_position)
             attention = model.get_attention(obs, _states, done)[0]
             # head_0
-            attention = attention[0][0][agent_position]
-            attention = np.reshape(attention, [14, 14])
+            attention0 = attention[0][0][agent_position]
+            attention0 = np.reshape(attention0, [14, 14])
             fig = plt.figure(2)
             plt.clf()
-            plt.imshow(attention, cmap='gray')
+            plt.imshow(attention0, cmap='gray')
             fig.canvas.draw()
 
             # head_1
-            attention = attention[0][1][agent_position]
-            attention = np.reshape(attention, [14, 14])
+            attention1 = attention[0][1][agent_position]
+            attention1 = np.reshape(attention1, [14, 14])
             fig = plt.figure(2)
             plt.clf()
-            plt.imshow(attention, cmap='gray')
+            plt.imshow(attention1, cmap='gray')
             fig.canvas.draw()
         # env.render()
         plt.pause(0.000001)
