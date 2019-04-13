@@ -70,10 +70,22 @@ class BoxWoldRandEnv(gym.Env):
         self.CorrectBox_lists = list(range(3, 3 + len(CorrectBox_COLORS)))
         # DistractorBox_lists = range(3 + len(CorrectBox_COLORS), 3 + len(CorrectBox_COLORS) + len(DistractorBox_COLORS))
 
+        self.reset()
+
+    def set_box(self, box):
+        while True:
+            LEFT_BOX = self.np_random.randint(0, 122)
+            LEFT_BOX_x = LEFT_BOX // 11 + 1
+            LEFT_BOX_y = LEFT_BOX % 11 + 1
+            if self.init_world_map[LEFT_BOX_x][LEFT_BOX_y] == 1 and self.init_world_map[LEFT_BOX_x][LEFT_BOX_y + 1] == 1 and self.init_world_map[LEFT_BOX_x][LEFT_BOX_y - 1] == 1 and self.init_world_map[LEFT_BOX_x][LEFT_BOX_y + 2] == 1:
+                self.init_world_map[LEFT_BOX_x][LEFT_BOX_y] = box[0]
+                self.init_world_map[LEFT_BOX_x][LEFT_BOX_y + 1] = box[1]
+                break
+
+    def reset(self):
         this_file_path = os.path.dirname(os.path.realpath(__file__))
         self.world_map_path = os.path.join(this_file_path, 'blank.txt')
         self.init_world_map = self._read_world_map(self.world_map_path)
-
         # SET RAND MAP
         # SET AGENT LOCATION
         agent_init_position = self.np_random.randint(0, 144)
@@ -101,21 +113,6 @@ class BoxWoldRandEnv(gym.Env):
         self.agent_init_state = self._get_agent(self.init_world_map)
         self.agent_current_state = copy.deepcopy(self.agent_init_state)
         self.key = 0  # init no key (dark)
-
-    def set_box(self, box):
-        while True:
-            LEFT_BOX = self.np_random.randint(0, 122)
-            LEFT_BOX_x = LEFT_BOX // 11 + 1
-            LEFT_BOX_y = LEFT_BOX % 11 + 1
-            if self.init_world_map[LEFT_BOX_x][LEFT_BOX_y] == 1 and self.init_world_map[LEFT_BOX_x][LEFT_BOX_y + 1] == 1 and self.init_world_map[LEFT_BOX_x][LEFT_BOX_y - 1] == 1 and self.init_world_map[LEFT_BOX_x][LEFT_BOX_y + 2] == 1:
-                self.init_world_map[LEFT_BOX_x][LEFT_BOX_y] = box[0]
-                self.init_world_map[LEFT_BOX_x][LEFT_BOX_y + 1] = box[1]
-                break
-
-    def reset(self):
-        self.current_world_map = copy.deepcopy(self.init_world_map)
-        self.agent_current_state = copy.deepcopy(self.agent_init_state)
-        self.observation = self._worldmap_to_obervation(self.init_world_map)
         return self.observation
 
     def seed(self, seed=None):
