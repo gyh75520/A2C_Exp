@@ -104,7 +104,9 @@ class BoxWoldRandEnv(gym.Env):
                 self.init_world_map[First_CBOX_x][First_CBOX_y] = 6
                 break
         # BOX_LIST = [(7, 6), (4, 7), (5, 4), (3, 5), (9, 5), (8, 7)]
+        # self.DistractorEndBox_lists = [9, 8]
         BOX_LIST = [(7, 6), (4, 7), (5, 4), (3, 5), (9, 5), (8, 7), (10, 8), (11, 10), (12, 9), (13, 12)]
+        self.DistractorEndBox_lists = [13, 11]
         for BOX in BOX_LIST:
             self.set_box(BOX)
 
@@ -189,8 +191,14 @@ class BoxWoldRandEnv(gym.Env):
                     return (self.observation, reward, done, info)
                 else:
                     reward = -1
-                    done = True
-                    self._update_key(0)
+                    if nxt_left_color in self.DistractorEndBox_lists:
+                        done = True
+                    else:
+                        done = False
+                    # add for simple env
+                    self.current_world_map[next_agent_state[0], next_agent_state[1] - 1] = 1
+                    # change self._update_key(0) for simple env
+                    self._update_key(nxt_left_color)
                     self._agent_move(next_agent_state)
                     # self.observation = self.reset()
                     return (self.observation, reward, done, info)
