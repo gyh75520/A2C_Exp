@@ -43,7 +43,9 @@ CorrectBox_COLORS = {3: [255., 255., 255.],
                      6: [255., 0., 255.], 7: [255., 255., 0.]}
 
 DistractorBox_COLORS = {8: [0., 255., 255.], 9: [255.0, 127.5, 127.5],
-                        10: [127.5, 0., 255.], 11: [255., 127.5, 0.]}
+                        10: [127.5, 0., 255.], 11: [255., 127.5, 0.],
+                        12: [127.5, 127.5, 255.], 13: [0., 127.5, 127.5],
+                        14: [127.5, 127.5, 0.], 15: [255., 0., 127.5], }
 
 COLORS = dict(list(BGAndAG_COLORS.items()) + list(CorrectBox_COLORS.items()) + list(DistractorBox_COLORS.items()))
 
@@ -101,7 +103,8 @@ class BoxWoldRandEnv(gym.Env):
             if self.init_world_map[First_CBOX_x][First_CBOX_y] == 1:
                 self.init_world_map[First_CBOX_x][First_CBOX_y] = 6
                 break
-        BOX_LIST = [(7, 6), (4, 7), (5, 4), (3, 5), (9, 5), (8, 7)]
+        # BOX_LIST = [(7, 6), (4, 7), (5, 4), (3, 5), (9, 5), (8, 7)]
+        BOX_LIST = [(7, 6), (4, 7), (5, 4), (3, 5), (9, 5), (8, 7), (10, 8), (11, 10), (12, 9), (13, 12)]
         for BOX in BOX_LIST:
             self.set_box(BOX)
 
