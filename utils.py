@@ -258,7 +258,7 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
     :param input_tensor: (TensorFlow Tensor) The input tensor from NN [B,Height,W,D]
     :param scope: (str) The TensorFlow variable scope
     :param num_heads: (float) The number of attention heads to use
-    :return: (TensorFlow Tensor) [B,Height*W+,num_heads,D]
+    :return: (TensorFlow Tensor) [B,Height*W+H_i,num_heads,D]
     """
     with tf.variable_scope(scope):
         last_num_height = input_tensor.get_shape()[1].value
@@ -280,7 +280,7 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
 
             # self.filters.append(self.add_weight(name='filter' + str(i),
             #                                     shape=[1, self.entities_nums[-1]
-            #                                            * self.entities_nums[0], size],
+            #               ``                              * self.entities_nums[0], size],
             #                                     dtype=tf.float32, initializer=glorot_uniform(seed=self.seed + i), regularizer=l2(self.l2_reg)))
             #
             # self.bias.append(self.add_weight(name='bias' + str(i), shape=[size], dtype=tf.float32,
@@ -305,6 +305,7 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
         dim = last_num_features
         # [B,N,Deepth] --> [Deepth,B,N,1]
         split_tensor0 = tf.split(hidden_nn_layers[0], dim * [1], 2)
+        attentions = []
         for idx, layer_size in enumerate(layer_size):
             # [B,N,Deepth] --> [Deepth,B,N,1]
             split_tensor = tf.split(hidden_nn_layers[-1], dim * [1], 2)
@@ -332,6 +333,7 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
             curr_out = tf.transpose(curr_out, perm=[0, 2, 1])
             # [B,H_idx,Head,Deepth]
             MHDPA4CIN_out, attention = MHDPA4CIN(inputs, curr_out, scope='MHDPA4CIN{}'.format(idx), num_heads=num_heads)
+            attentions.append(attention)
             print('curr_out after MHDPA4CIN:', MHDPA4CIN_out)
             if split_half:
                 if idx != len(layer_size) - 1:
@@ -351,7 +353,7 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
         print('final_result_concat', result)
         # result = tf.reduce_sum(result, -1, keep_dims=False)
 
-        return result
+        return result, attentions
 
 # def subsample(t, vt, bins):
 #     """Given a data such that value vt[i] was observed at time t[i],

@@ -153,7 +153,7 @@ def test(model_name, env_name, num_cpu, log_dir):
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 env_name = 'BoxRandWorld'
 num_cpu = 4
-A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention_Cin/{}_0/'.format(env_name)
+A2C_SelfAttention_Cin_log_dir = 'attention_exp/A2C_SelfAttention_Cin/{}_0/'.format(env_name)
 A2C_DualAttention_log_dir = 'attention_exp/A2C_DualAttention/{}_0/'.format(env_name)
 A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention/{}_0/'.format(env_name)
 A2C_Attention4_log_dir = 'attention_exp/A2C_Attention4/{}_0/'.format(env_name)
@@ -162,7 +162,7 @@ A2C_Attention2_log_dir = 'attention_exp/A2C_Attention2/{}_0/'.format(env_name)
 A2C_Attention_log_dir = 'attention_exp/A2C_Attention/{}_0/'.format(env_name)
 A2C_log_dir = 'attention_exp/A2C/{}_0/'.format(env_name)
 
-run('A2C_SelfAttention_Cin', env_name, num_cpu, A2C_SelfAttention_log_dir)
+run('A2C_SelfAttention_Cin', env_name, num_cpu, A2C_SelfAttention_Cin_log_dir)
 # run('A2C_DualAttention', env_name, num_cpu, A2C_DualAttention_log_dir)
 # run('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
 # run('A2C_Attention4', env_name, num_cpu, A2C_Attention4_log_dir)

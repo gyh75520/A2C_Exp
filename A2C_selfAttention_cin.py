@@ -33,7 +33,8 @@ class SelfAttentionCinLstmPolicy(LstmPolicy):
             entities = tf.concat([extracted_features, coor], axis=3)
             print('entities:', entities)
             # [B,H*W,num_heads,Deepth=D+2]
-            cin_output = CIN(entities, 'CIN')
+            cin_output, attentions = CIN(entities, 'CIN')
+            self.attention = attentions[0]
             print('CIN:', cin_output)
             # max_pooling
             cin_maxpooling_output = tf.reduce_max(cin_output, axis=[1])
