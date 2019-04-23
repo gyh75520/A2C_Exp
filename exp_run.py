@@ -13,6 +13,7 @@ from A2C_attention3 import Attention3Policy
 from A2C_attention4 import Attention4Policy
 from A2C_selfAttention import SelfAttentionLstmPolicy
 from A2C_DualAttention import DualAttentionLstmPolicy
+from A2C_selfAttention_cin import SelfAttentionCinLstmPolicy
 import gym_boxworld
 
 
@@ -58,6 +59,8 @@ def make_env(env_id, rank, log_dir, useMonitor=True, seed=0):
 def get_model(model_name, env, log_dir):
     if model_name == "A2C_DualAttention":
         model = A2C(DualAttentionLstmPolicy, env, verbose=1)
+    elif model_name == "A2C_SelfAttention_Cin":
+        model = A2C(SelfAttentionCinLstmPolicy, env, verbose=1)
     elif model_name == "A2C_SelfAttention":
         model = A2C(SelfAttentionLstmPolicy, env, verbose=1)
     elif model_name == 'A2C_Attention':
@@ -148,8 +151,9 @@ def test(model_name, env_name, num_cpu, log_dir):
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-env_name = 'BoxWorld'
+env_name = 'BoxRandWorld'
 num_cpu = 4
+A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention_Cin/{}_0/'.format(env_name)
 A2C_DualAttention_log_dir = 'attention_exp/A2C_DualAttention/{}_0/'.format(env_name)
 A2C_SelfAttention_log_dir = 'attention_exp/A2C_SelfAttention/{}_0/'.format(env_name)
 A2C_Attention4_log_dir = 'attention_exp/A2C_Attention4/{}_0/'.format(env_name)
@@ -158,6 +162,7 @@ A2C_Attention2_log_dir = 'attention_exp/A2C_Attention2/{}_0/'.format(env_name)
 A2C_Attention_log_dir = 'attention_exp/A2C_Attention/{}_0/'.format(env_name)
 A2C_log_dir = 'attention_exp/A2C/{}_0/'.format(env_name)
 
+run('A2C_SelfAttention_Cin', env_name, num_cpu, A2C_SelfAttention_log_dir)
 # run('A2C_DualAttention', env_name, num_cpu, A2C_DualAttention_log_dir)
 # run('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
 # run('A2C_Attention4', env_name, num_cpu, A2C_Attention4_log_dir)
@@ -167,4 +172,4 @@ A2C_log_dir = 'attention_exp/A2C/{}_0/'.format(env_name)
 # run('A2C', env_name, num_cpu, A2C_log_dir)
 print('finish')
 
-test('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)
+# test('A2C_SelfAttention', env_name, num_cpu, A2C_SelfAttention_log_dir)

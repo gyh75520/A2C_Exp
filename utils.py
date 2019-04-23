@@ -157,6 +157,74 @@ def MHDPA(input_tensor, scope, num_heads):
         return output_transpose, weights
 
 
+def MHDPA4CIN(input_tensor1, input_tensor2, scope, num_heads):
+    """
+    An implementation of the Multi-Head Dot-Product Attention architecture in "Relational Deep Reinforcement Learning"
+    https://arxiv.org/abs/1806.01830
+    ref to the RMC architecture on https://github.com/deepmind/sonnet/blob/master/sonnet/python/modules/relational_memory.py
+
+    :param input_tensor: (TensorFlow Tensor) The input tensor from NN [B,Height*W,D]
+    :param scope: (str) The TensorFlow variable scope
+    :param num_heads: (float) The number of attention heads to use
+    :return: (TensorFlow Tensor) [B,Height*W,num_heads,D]
+    """
+    with tf.variable_scope(scope):
+        input1_entities = input_tensor1.get_shape()[1].value
+        input1_last_num_features = input_tensor1.get_shape()[2].value
+        query_size = input1_last_num_features
+        # ----- query ------
+        # Denote N = last_num_height * last_num_width
+        # [B*N,Deepth]
+        input_tensor1_reshape = tf.reshape(input_tensor1, [-1, input1_last_num_features])
+        # [B*N,# QUESTION: ]
+        q = linear(input_tensor1_reshape, "Q", query_size * num_heads)
+        # [B*N,Q*H]
+        q = layerNorm(q, "q_layerNorm")
+        # [B,N,Q*H]
+        q = tf.reshape(q, [-1, input1_entities, query_size * num_heads])
+        # [B,N,H,Q]
+        q_reshape = tf.reshape(q, [-1, input1_entities, num_heads, query_size])
+        print("q_reshape", q_reshape)
+        # [B,N,H,Q/H] -> [B,H,N,Q/H]
+        q = tf.transpose(q_reshape, [0, 2, 1, 3])
+        print("q_transpose", q)
+
+        # ------- k v --------
+        input2_entities = input_tensor2.get_shape()[1].value
+        input2_last_num_features = input_tensor2.get_shape()[2].value
+        key_size = value_size = input2_last_num_features
+        # qkv_size = 2 * key_size + query_size
+        kv_size = 2 * key_size
+        # [B*N,Deepth]
+        extracted_features_reshape = tf.reshape(input_tensor2, [-1, input2_last_num_features])
+        # [B*N,KV*H]
+        kv = linear(extracted_features_reshape, "KV", kv_size * num_heads)
+        # [B*N,KV*H]
+        kv = layerNorm(kv, "kv_layerNorm")
+        # [B,N,KV*H]
+        kv = tf.reshape(kv, [-1, input2_entities, kv_size * num_heads])
+        # [B,N,H,KV]
+        kv_reshape = tf.reshape(kv, [-1, input2_entities, num_heads, kv_size])
+        print("kv_reshape", kv_reshape)
+        # [B,N,H,kV/H] -> [B,H,N,KV/H]
+        kv_transpose = tf.transpose(kv_reshape, [0, 2, 1, 3])
+        print("kv_transpose", kv_transpose)
+
+        k, v = tf.split(kv_transpose, [key_size, value_size], -1)
+
+        qkv_size = kv_size + query_size
+        q *= qkv_size ** -0.5
+        # [B,H,N,N]
+        dot_product = tf.matmul(q, k, transpose_b=True)
+        weights = tf.nn.softmax(dot_product)
+        # [B,H,N,V]
+        output = tf.matmul(weights, v)
+        # [B,H,N,V] -> [B,N,H,V]
+        output_transpose = tf.transpose(output, [0, 2, 1, 3])
+
+        return output_transpose, weights
+
+
 def residual_block(x, y):
     """
     Z = W*y + x
@@ -174,11 +242,116 @@ def residual_block(x, y):
     x_reshape = tf.reshape(x, [-1, last_num_width * last_num_height, last_num_features])
     x_edims = tf.expand_dims(x_reshape, axis=2)
     num_heads = y.get_shape()[2]
-    # [B,Height,W,D] --> [B,Height*W,H,D]
+    # [B,Height*W,1,D] --> [B,Height*W,H,D]
     x_edims = tf.tile(x_edims, [1,  1, num_heads, 1])
     # W*y + x
     residual_output = tf.add(y_Matmul_W, x_edims)
     return residual_output
+
+
+def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
+    """
+    An implementation of the Compressed Interaction Network architecture in XDeepFM
+    https://arxiv.org/abs/1806.01830
+    ref to https://github.com/Leavingseason/xDeepFM
+
+    :param input_tensor: (TensorFlow Tensor) The input tensor from NN [B,Height,W,D]
+    :param scope: (str) The TensorFlow variable scope
+    :param num_heads: (float) The number of attention heads to use
+    :return: (TensorFlow Tensor) [B,Height*W+,num_heads,D]
+    """
+    with tf.variable_scope(scope):
+        last_num_height = input_tensor.get_shape()[1].value
+        last_num_width = input_tensor.get_shape()[2].value
+        last_num_features = input_tensor.get_shape()[3].value
+        entities_nums = [last_num_height * last_num_width]
+        # Denote N = last_num_height * last_num_width
+        # [B,N,Deepth]
+        inputs = tf.reshape(input_tensor, [-1, last_num_height * last_num_width, last_num_features])
+        filters = []
+        bias = []
+        for i, size in enumerate(layer_size):
+            # wshape = [1, entities_nums[-1] * entities_nums[0], size]
+            # # weight = tf.get_variable("w", wshape, initializer=ortho_init(1.0))
+            # weight = tf.get_variable("filter_{}".format(i), wshape, initializer=tf.random_normal_initializer(0., 0.3))
+            # b = tf.get_variable("bias_{}".format(i), [size], initializer=tf.constant_initializer(0.0))
+            # filters.append(weight)
+            # bias.append(b)
+
+            # self.filters.append(self.add_weight(name='filter' + str(i),
+            #                                     shape=[1, self.entities_nums[-1]
+            #                                            * self.entities_nums[0], size],
+            #                                     dtype=tf.float32, initializer=glorot_uniform(seed=self.seed + i), regularizer=l2(self.l2_reg)))
+            #
+            # self.bias.append(self.add_weight(name='bias' + str(i), shape=[size], dtype=tf.float32,
+            #                                  initializer=tf.keras.initializers.Zeros()))
+
+            if split_half:
+                if i != len(layer_size) - 1 and size % 2 > 0:
+                    raise ValueError(
+                        "layer_size must be even number except for the last layer when split_half=True")
+
+                entities_nums.append(size // 2)
+            else:
+                entities_nums.append(size)
+
+        hidden_nn_layers = [inputs]
+
+        num_heads = 2
+        inputs_edims = tf.expand_dims(inputs, axis=2)
+        # [B,N,1,Deepth] --> [B,N,Head,Deepth]
+        inputs_edims = tf.tile(inputs_edims, [1,  1, num_heads, 1])
+        final_result = [inputs_edims]
+        dim = last_num_features
+        # [B,N,Deepth] --> [Deepth,B,N,1]
+        split_tensor0 = tf.split(hidden_nn_layers[0], dim * [1], 2)
+        for idx, layer_size in enumerate(layer_size):
+            # [B,N,Deepth] --> [Deepth,B,N,1]
+            split_tensor = tf.split(hidden_nn_layers[-1], dim * [1], 2)
+            # [Deepth,B,N,1] * [Deepth,B,1,H_idx] --> [Deepth,B,N,H_idx]
+            dot_result_m = tf.matmul(split_tensor0, split_tensor, transpose_b=True)
+            # [Deepth,B,N,H_idx] --> [Deepth,B,N*H_idx]
+            dot_result_o = tf.reshape(dot_result_m, shape=[dim, -1, entities_nums[0] * entities_nums[idx]])
+            # [Deepth,B,N*H_idx] --> [B,Deepth,N*H_idx]
+            dot_result = tf.transpose(dot_result_o, perm=[1, 0, 2])
+            print('----------layer', idx)
+            print('dot_result:', dot_result)
+            # [B,Deepth,N*H_idx] --> [B,Deepth,N,H_idx]
+            dot_result_reshape = tf.reshape(dot_result, [-1, dim, entities_nums[0], entities_nums[idx]])
+            # [B,Deepth,N,H_idx] --> [B,Deepth,H_idx]
+            curr_out = tf.reduce_sum(dot_result_reshape, 2, keep_dims=False)
+            print('curr_out', curr_out)
+            # --- origin cin ----
+            # # [B,Deepth,N*N] --> [B,Deepth,H_idx]
+            # curr_out = tf.nn.conv1d(dot_result, filters=filters[idx], stride=1, padding='VALID')
+            # print('curr_out:', curr_out)
+            # curr_out = tf.nn.bias_add(curr_out, bias[idx])
+            # curr_out = activation_fun(self.activation, curr_out)
+
+            # [B,Deepth,N*N] --> [B,H_idx,Deepth]
+            curr_out = tf.transpose(curr_out, perm=[0, 2, 1])
+            # [B,H_idx,Head,Deepth]
+            MHDPA4CIN_out, attention = MHDPA4CIN(inputs, curr_out, scope='MHDPA4CIN{}'.format(idx), num_heads=num_heads)
+            print('curr_out after MHDPA4CIN:', MHDPA4CIN_out)
+            if split_half:
+                if idx != len(layer_size) - 1:
+                    next_hidden, direct_connect = tf.split(curr_out, 2 * [layer_size // 2], 1)
+                else:
+                    direct_connect = curr_out
+                    next_hidden = 0
+            else:
+                direct_connect = curr_out
+                next_hidden = curr_out
+
+            # final_result.append(direct_connect)
+            final_result.append(MHDPA4CIN_out)
+            hidden_nn_layers.append(next_hidden)
+        print('final_result', final_result)
+        result = tf.concat(final_result, axis=1)
+        print('final_result_concat', result)
+        # result = tf.reduce_sum(result, -1, keep_dims=False)
+
+        return result
 
 # def subsample(t, vt, bins):
 #     """Given a data such that value vt[i] was observed at time t[i],
