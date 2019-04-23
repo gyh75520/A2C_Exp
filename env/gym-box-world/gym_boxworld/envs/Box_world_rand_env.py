@@ -72,6 +72,7 @@ class BoxWoldRandEnv(gym.Env):
         self.CorrectBox_lists = list(range(3, 3 + len(CorrectBox_COLORS)))
         # DistractorBox_lists = range(3 + len(CorrectBox_COLORS), 3 + len(CorrectBox_COLORS) + len(DistractorBox_COLORS))
 
+        self.max_timesteps = 5000
         self.reset()
 
     def set_box(self, box):
@@ -85,6 +86,7 @@ class BoxWoldRandEnv(gym.Env):
                 break
 
     def reset(self):
+        self.timesteps = 0
         this_file_path = os.path.dirname(os.path.realpath(__file__))
         self.world_map_path = os.path.join(this_file_path, 'blank.txt')
         self.init_world_map = self._read_world_map(self.world_map_path)
@@ -137,6 +139,9 @@ class BoxWoldRandEnv(gym.Env):
         action = int(action) + 1  # ignore noop action
         next_agent_state = [self.agent_current_state[0] + self.action_pos_dict[action][0], self.agent_current_state[1] + self.action_pos_dict[action][1]]
 
+        if self.timesteps > self.max_timesteps:
+            return (self.observation, 0, True, info)
+        self.timesteps += 1
         if action == 0:
             return (self.observation, 0, False, info)
 
