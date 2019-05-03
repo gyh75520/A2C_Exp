@@ -176,7 +176,7 @@ def MHDPA4CIN(input_tensor1, input_tensor2, scope, num_heads):
         # Denote N = last_num_height * last_num_width
         # [B*N,Deepth]
         input_tensor1_reshape = tf.reshape(input_tensor1, [-1, input1_last_num_features])
-        # [B*N,# QUESTION: ]
+        # [B*N,Q*H]
         q = linear(input_tensor1_reshape, "Q", query_size * num_heads)
         # [B*N,Q*H]
         q = layerNorm(q, "q_layerNorm")
@@ -306,31 +306,9 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
         # [B,N,Deepth] --> [Deepth,B,N,1]
         split_tensor0 = tf.split(hidden_nn_layers[0], dim * [1], 2)
         attentions = []
+        curr_out = inputs
         for idx, layer_size in enumerate(layer_size):
-            # [B,N,Deepth] --> [Deepth,B,N,1]
-            split_tensor = tf.split(hidden_nn_layers[-1], dim * [1], 2)
-            # [Deepth,B,N,1] * [Deepth,B,1,H_idx] --> [Deepth,B,N,H_idx]
-            dot_result_m = tf.matmul(split_tensor0, split_tensor, transpose_b=True)
-            # [Deepth,B,N,H_idx] --> [Deepth,B,N*H_idx]
-            dot_result_o = tf.reshape(dot_result_m, shape=[dim, -1, entities_nums[0] * entities_nums[idx]])
-            # [Deepth,B,N*H_idx] --> [B,Deepth,N*H_idx]
-            dot_result = tf.transpose(dot_result_o, perm=[1, 0, 2])
             print('----------layer', idx)
-            print('dot_result:', dot_result)
-            # [B,Deepth,N*H_idx] --> [B,Deepth,N,H_idx]
-            dot_result_reshape = tf.reshape(dot_result, [-1, dim, entities_nums[0], entities_nums[idx]])
-            # [B,Deepth,N,H_idx] --> [B,Deepth,H_idx]
-            curr_out = tf.reduce_sum(dot_result_reshape, 2, keep_dims=False)
-            print('curr_out', curr_out)
-            # --- origin cin ----
-            # # [B,Deepth,N*N] --> [B,Deepth,H_idx]
-            # curr_out = tf.nn.conv1d(dot_result, filters=filters[idx], stride=1, padding='VALID')
-            # print('curr_out:', curr_out)
-            # curr_out = tf.nn.bias_add(curr_out, bias[idx])
-            # curr_out = activation_fun(self.activation, curr_out)
-
-            # [B,Deepth,N*N] --> [B,H_idx,Deepth]
-            curr_out = tf.transpose(curr_out, perm=[0, 2, 1])
             # [B,H_idx,Head,Deepth]
             MHDPA4CIN_out, attention = MHDPA4CIN(inputs, curr_out, scope='MHDPA4CIN{}'.format(idx), num_heads=num_heads)
             attentions.append(attention)
@@ -348,6 +326,32 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
             # final_result.append(direct_connect)
             final_result.append(MHDPA4CIN_out)
             hidden_nn_layers.append(next_hidden)
+
+            # ------ Get curr_out -------
+            # [B,N,Deepth] --> [Deepth,B,N,1]
+            split_tensor = tf.split(hidden_nn_layers[-1], dim * [1], 2)
+            # [Deepth,B,N,1] * [Deepth,B,1,H_idx] --> [Deepth,B,N,H_idx]
+            dot_result_m = tf.matmul(split_tensor0, split_tensor, transpose_b=True)
+            # [Deepth,B,N,H_idx] --> [Deepth,B,N*H_idx]
+            dot_result_o = tf.reshape(dot_result_m, shape=[dim, -1, entities_nums[0] * entities_nums[idx]])
+            # [Deepth,B,N*H_idx] --> [B,Deepth,N*H_idx]
+            dot_result = tf.transpose(dot_result_o, perm=[1, 0, 2])
+            print('dot_result:', dot_result)
+            # [B,Deepth,N*H_idx] --> [B,Deepth,N,H_idx]
+            dot_result_reshape = tf.reshape(dot_result, [-1, dim, entities_nums[0], entities_nums[idx]])
+            # [B,Deepth,N,H_idx] --> [B,Deepth,H_idx]
+            curr_out = tf.reduce_sum(dot_result_reshape, 2, keep_dims=False)
+            print('curr_out', curr_out)
+            # --- origin cin ----
+            # # [B,Deepth,N*N] --> [B,Deepth,H_idx]
+            # curr_out = tf.nn.conv1d(dot_result, filters=filters[idx], stride=1, padding='VALID')
+            # print('curr_out:', curr_out)
+            # curr_out = tf.nn.bias_add(curr_out, bias[idx])
+            # curr_out = activation_fun(self.activation, curr_out)
+
+            # [B,Deepth,N*N] --> [B,H_idx,Deepth]
+            curr_out = tf.transpose(curr_out, perm=[0, 2, 1])
+
         print('final_result', final_result)
         result = tf.concat(final_result, axis=1)
         print('final_result_concat', result)
