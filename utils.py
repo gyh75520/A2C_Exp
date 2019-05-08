@@ -249,7 +249,7 @@ def residual_block(x, y):
     return residual_output
 
 
-def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
+def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False, shun_conv1d=False):
     """
     An implementation of the Compressed Interaction Network architecture in XDeepFM
     https://arxiv.org/abs/1806.01830
@@ -271,12 +271,12 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
         filters = []
         bias = []
         for i, size in enumerate(layer_size):
-            # wshape = [1, entities_nums[-1] * entities_nums[0], size]
-            # # weight = tf.get_variable("w", wshape, initializer=ortho_init(1.0))
-            # weight = tf.get_variable("filter_{}".format(i), wshape, initializer=tf.random_normal_initializer(0., 0.3))
-            # b = tf.get_variable("bias_{}".format(i), [size], initializer=tf.constant_initializer(0.0))
-            # filters.append(weight)
-            # bias.append(b)
+            wshape = [1, entities_nums[-1] * entities_nums[0], size]
+            # weight = tf.get_variable("w", wshape, initializer=ortho_init(1.0))
+            weight = tf.get_variable("filter_{}".format(i), wshape, initializer=tf.random_normal_initializer(0., 0.3))
+            b = tf.get_variable("bias_{}".format(i), [size], initializer=tf.constant_initializer(0.0))
+            filters.append(weight)
+            bias.append(b)
 
             # self.filters.append(self.add_weight(name='filter' + str(i),
             #                                     shape=[1, self.entities_nums[-1]
@@ -337,17 +337,19 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False):
             # [Deepth,B,N*H_idx] --> [B,Deepth,N*H_idx]
             dot_result = tf.transpose(dot_result_o, perm=[1, 0, 2])
             print('dot_result:', dot_result)
-            # [B,Deepth,N*H_idx] --> [B,Deepth,N,H_idx]
-            dot_result_reshape = tf.reshape(dot_result, [-1, dim, entities_nums[0], entities_nums[idx]])
-            # [B,Deepth,N,H_idx] --> [B,Deepth,H_idx]
-            curr_out = tf.reduce_sum(dot_result_reshape, 2, keep_dims=False)
-            print('curr_out', curr_out)
-            # --- origin cin ----
-            # # [B,Deepth,N*N] --> [B,Deepth,H_idx]
-            # curr_out = tf.nn.conv1d(dot_result, filters=filters[idx], stride=1, padding='VALID')
-            # print('curr_out:', curr_out)
-            # curr_out = tf.nn.bias_add(curr_out, bias[idx])
-            # curr_out = activation_fun(self.activation, curr_out)
+            if shun_conv1d:
+                # [B,Deepth,N*H_idx] --> [B,Deepth,N,H_idx]
+                dot_result_reshape = tf.reshape(dot_result, [-1, dim, entities_nums[0], entities_nums[idx]])
+                # [B,Deepth,N,H_idx] --> [B,Deepth,H_idx]
+                curr_out = tf.reduce_sum(dot_result_reshape, 2, keep_dims=False)
+                print('curr_out', curr_out)
+            else:
+                # --- origin cin ----
+                # [B,Deepth,N*H_idx] --> [B,Deepth,H_idx]
+                curr_out = tf.nn.conv1d(dot_result, filters=filters[idx], stride=1, padding='VALID')
+                print('curr_out:', curr_out)
+                curr_out = tf.nn.bias_add(curr_out, bias[idx])
+                curr_out = tf.nn.relu(curr_out)
 
             # [B,Deepth,N*N] --> [B,H_idx,Deepth]
             curr_out = tf.transpose(curr_out, perm=[0, 2, 1])

@@ -113,26 +113,28 @@ def test(model_name, env_name, num_cpu, log_dir):
 
     obs = env.reset()
     from matplotlib import pyplot as plt
+    show_num = 1
     while True:
         action, _states = model.predict(obs)
+        # obs, rewards, done, info = env.step([int(input('action:'))]*num_cpu)
         obs, rewards, done, info = env.step(action)
-        img = obs[1, :, :, :]
-        # fig = plt.figure(0)
-        rows = 2
-        cols = num_cpu // rows
-        fig, axarr = plt.subplots(rows, cols, num=0)
-        # axarr[0][0].cla()
-        for r in range(rows):
-            for c in range(cols):
-                axarr[r][c].imshow(img / 255)
+        img = obs[show_num, :, :, :]
+        fig = plt.figure(0)
+        plt.clf()
+        plt.imshow(img / 255)
         fig.canvas.draw()
 
-        if model_name == 'A2C_SelfAttention'and 'Box' in env_name and 'World' in env_name:
-            agent_position = env.env_method('get_current_agent_position')[0]
-            print('agent_position:', agent_position)
+        if 'SelfAttention' in model_name and 'Box' in env_name and 'World' in env_name:
+            agent_position = env.env_method('get_current_agent_position')[show_num]
+            print('agent_position', agent_position)
             attention = model.get_attention(obs, _states, done)[0]
             # head_0
-            attention0 = attention[0][0][agent_position]
+            attention0 = attention[show_num][0][agent_position]
+
+            left = [attention0[agent_position - 14] if agent_position - 14 >= 0 else 0]
+            right = [attention0[agent_position + 14] if agent_position + 14 > 155 else 0]
+            attention0_udlr = [left, right, attention0[agent_position - 1], attention0[agent_position + 1]]
+            # print('top :{} left:{}'.format(attention0[agent_position-14],attention0[agent_position-1]))
             attention0 = np.reshape(attention0, [14, 14])
             fig = plt.figure(2)
             plt.clf()
@@ -140,12 +142,19 @@ def test(model_name, env_name, num_cpu, log_dir):
             fig.canvas.draw()
 
             # head_1
-            attention1 = attention[0][1][agent_position]
+            attention1 = attention[show_num][1][agent_position]
+
+            left = [attention1[agent_position - 14] if agent_position - 14 >= 0 else 0]
+            right = [attention1[agent_position + 14] if agent_position + 14 > 155 else 0]
+            attention1_udlr = [left, right, attention1[agent_position - 1], attention1[agent_position + 1]]
+
             attention1 = np.reshape(attention1, [14, 14])
             fig = plt.figure(3)
             plt.clf()
             plt.imshow(attention1, cmap='gray')
             fig.canvas.draw()
+
+            print(action[show_num], np.argmax(attention0_udlr), np.argmax(attention1_udlr), "max attention:", np.max(attention0_udlr), np.max(attention1_udlr))
         # env.render()
         plt.pause(0.000001)
 
