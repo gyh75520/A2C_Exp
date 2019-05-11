@@ -348,10 +348,11 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False, shun_conv1
                 # [B,Deepth,N*H_idx] --> [B,Deepth,H_idx]
                 curr_out = tf.nn.conv1d(dot_result, filters=filters[idx], stride=1, padding='VALID')
                 print('curr_out:', curr_out)
-                curr_out = tf.nn.bias_add(curr_out, bias[idx])
-                curr_out = tf.nn.relu(curr_out)
+                # don't need active function
+                # curr_out = tf.nn.bias_add(curr_out, bias[idx])
+                # curr_out = tf.nn.relu(curr_out)
 
-            # [B,Deepth,N*N] --> [B,H_idx,Deepth]
+            # [B,Deepth,H_idx] --> [B,H_idx,Deepth]
             curr_out = tf.transpose(curr_out, perm=[0, 2, 1])
 
         print('final_result', final_result)
