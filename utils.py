@@ -163,17 +163,18 @@ def MHDPA4CIN(input_tensor1, input_tensor2, scope, num_heads):
     https://arxiv.org/abs/1806.01830
     ref to the RMC architecture on https://github.com/deepmind/sonnet/blob/master/sonnet/python/modules/relational_memory.py
 
-    :param input_tensor: (TensorFlow Tensor) The input tensor from NN [B,Height*W,D]
+    :param input_tensor: (TensorFlow Tensor) The input tensor [B,N1,D],[B,N2,D]
     :param scope: (str) The TensorFlow variable scope
     :param num_heads: (float) The number of attention heads to use
-    :return: (TensorFlow Tensor) [B,Height*W,num_heads,D]
+    :return: (TensorFlow Tensor) [B,N1,num_heads,D]
     """
     with tf.variable_scope(scope):
+        # k_size = v_size = q_size ,in other words Deepth is same
         input1_entities = input_tensor1.get_shape()[1].value
         input1_last_num_features = input_tensor1.get_shape()[2].value
         query_size = input1_last_num_features
         # ----- query ------
-        # Denote N = last_num_height * last_num_width
+        # Denote N = entities
         # [B*N,Deepth]
         input_tensor1_reshape = tf.reshape(input_tensor1, [-1, input1_last_num_features])
         # [B*N,Q*H]
@@ -192,6 +193,7 @@ def MHDPA4CIN(input_tensor1, input_tensor2, scope, num_heads):
         # ------- k v --------
         input2_entities = input_tensor2.get_shape()[1].value
         input2_last_num_features = input_tensor2.get_shape()[2].value
+        # k_size = v_size = q_size
         key_size = value_size = input2_last_num_features
         # qkv_size = 2 * key_size + query_size
         kv_size = 2 * key_size
@@ -261,6 +263,7 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False, shun_conv1
     :return: (TensorFlow Tensor) [B,Height*W+H_i,num_heads,D]
     """
     with tf.variable_scope(scope):
+        Batch = input_tensor.get_shape()[0].value
         last_num_height = input_tensor.get_shape()[1].value
         last_num_width = input_tensor.get_shape()[2].value
         last_num_features = input_tensor.get_shape()[3].value
@@ -328,7 +331,7 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False, shun_conv1
             hidden_nn_layers.append(next_hidden)
 
             # ------ Get curr_out -------
-            # [B,N,Deepth] --> [Deepth,B,N,1]
+            # [B,H_idx,Deepth] --> [Deepth,B,H_idx,1]
             split_tensor = tf.split(hidden_nn_layers[-1], dim * [1], 2)
             # [Deepth,B,N,1] * [Deepth,B,1,H_idx] --> [Deepth,B,N,H_idx]
             dot_result_m = tf.matmul(split_tensor0, split_tensor, transpose_b=True)
@@ -360,6 +363,8 @@ def CIN(input_tensor, scope, layer_size=(196, 196), split_half=False, shun_conv1
         print('final_result_concat', result)
         # result = tf.reduce_sum(result, -1, keep_dims=False)
 
+        # [B,N+H_idx,Head,Deepth] --> [B,N+H_idx,Head*Deepth]
+        result = tf.reshape(result, [Batch, -1, num_heads * last_num_features])
         return result, attentions
 
 # def subsample(t, vt, bins):
