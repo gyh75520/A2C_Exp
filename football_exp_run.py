@@ -17,6 +17,42 @@ from A2C_selfAttention_cin import SelfAttentionCinLstmPolicy
 # import gym_boxworld
 import gfootball.env as football_env
 import tensorflow as tf
+flags = tf.app.flags
+FLAGS = tf.app.flags.FLAGS
+
+# flags.DEFINE_string('level', 'academy_empty_goal_close',
+#                     'Defines type of problem being solved')
+flags.DEFINE_enum('state', 'extracted_stacked', ['extracted',
+                                                 'extracted_stacked'],
+                  'Observation to be used for training.')
+flags.DEFINE_enum('reward_experiment', 'scoring',
+                  ['scoring', 'scoring,checkpoints'],
+                  'Reward to be used for training.')
+flags.DEFINE_enum('policy', 'cnn', ['cnn', 'lstm', 'mlp', 'impala_cnn',
+                                    'gfootball_impala_cnn'],
+                  'Policy architecture')
+flags.DEFINE_integer('num_timesteps', int(2e6),
+                     'Number of timesteps to run for.')
+flags.DEFINE_integer('num_envs', 8,
+                     'Number of environments to run in parallel.')
+flags.DEFINE_integer('nsteps', 128, 'Number of environment steps per epoch; '
+                     'batch size is nsteps * nenv')
+flags.DEFINE_integer('noptepochs', 4, 'Number of updates per epoch.')
+flags.DEFINE_integer('nminibatches', 8,
+                     'Number of minibatches to split one epoch to.')
+flags.DEFINE_integer('save_interval', 100,
+                     'How frequently checkpoints are saved.')
+flags.DEFINE_integer('seed', 0, 'Random seed.')
+flags.DEFINE_float('lr', 0.00008, 'Learning rate')
+flags.DEFINE_float('ent_coef', 0.01, 'Entropy coeficient')
+flags.DEFINE_float('gamma', 0.993, 'Discount factor')
+flags.DEFINE_float('cliprange', 0.27, 'Clip range')
+flags.DEFINE_bool('render', False, 'If True, environment rendering is enabled.')
+flags.DEFINE_bool('dump_full_episodes', False,
+                  'If True, trace is dumped after every episode.')
+flags.DEFINE_bool('dump_scores', False,
+                  'If True, sampled traces after scoring are dumped.')
+flags.DEFINE_string('load_path', None, 'Path to load initial checkpoint from.')
 
 best_mean_reward, n_steps = -np.inf, 0
 
@@ -58,52 +94,18 @@ def make_env(env_id, rank, log_dir, useMonitor=True, seed=0):
 
 
 def make_football_env(env_name, rank, log_dir, useMonitor=True, seed=0):
-    flags = tf.app.flags
-    FLAGS = tf.app.flags.FLAGS
-
-    flags.DEFINE_string('level', 'academy_empty_goal_close',
-                        'Defines type of problem being solved')
-    flags.DEFINE_enum('state', 'extracted_stacked', ['extracted',
-                                                     'extracted_stacked'],
-                      'Observation to be used for training.')
-    flags.DEFINE_enum('reward_experiment', 'scoring',
-                      ['scoring', 'scoring,checkpoints'],
-                      'Reward to be used for training.')
-    flags.DEFINE_enum('policy', 'cnn', ['cnn', 'lstm', 'mlp', 'impala_cnn',
-                                        'gfootball_impala_cnn'],
-                      'Policy architecture')
-    flags.DEFINE_integer('num_timesteps', int(2e6),
-                         'Number of timesteps to run for.')
-    flags.DEFINE_integer('num_envs', 8,
-                         'Number of environments to run in parallel.')
-    flags.DEFINE_integer('nsteps', 128, 'Number of environment steps per epoch; '
-                         'batch size is nsteps * nenv')
-    flags.DEFINE_integer('noptepochs', 4, 'Number of updates per epoch.')
-    flags.DEFINE_integer('nminibatches', 8,
-                         'Number of minibatches to split one epoch to.')
-    flags.DEFINE_integer('save_interval', 100,
-                         'How frequently checkpoints are saved.')
-    flags.DEFINE_integer('seed', 0, 'Random seed.')
-    flags.DEFINE_float('lr', 0.00008, 'Learning rate')
-    flags.DEFINE_float('ent_coef', 0.01, 'Entropy coeficient')
-    flags.DEFINE_float('gamma', 0.993, 'Discount factor')
-    flags.DEFINE_float('cliprange', 0.27, 'Clip range')
-    flags.DEFINE_bool('render', False, 'If True, environment rendering is enabled.')
-    flags.DEFINE_bool('dump_full_episodes', False,
-                      'If True, trace is dumped after every episode.')
-    flags.DEFINE_bool('dump_scores', False,
-                      'If True, sampled traces after scoring are dumped.')
-    flags.DEFINE_string('load_path', None, 'Path to load initial checkpoint from.')
+    rep = 'pixels_gray'
 
     def _init():
         # env = make_atari(env_id)
         env = football_env.create_environment(
-            env_name=env_name, stacked=('stacked' in FLAGS.state),
+            env_name=env_name,
+            stacked=True,
+            render=True if 'pixel' in rep else False,
             # rewards=FLAGS.reward_experiment,
             logdir=log_dir,
             enable_goal_videos=FLAGS.dump_scores and (seed == 0),
             enable_full_episode_videos=FLAGS.dump_full_episodes and (seed == 0),
-            render=FLAGS.render and (seed == 0),
             dump_frequency=50 if FLAGS.render and seed == 0 else 0)
         if useMonitor:
             env = Monitor(env, log_dir + str(rank), allow_early_resets=True)
@@ -149,7 +151,7 @@ def run(model_name, env_name, num_cpu, log_dir):
     print(("---------------Create dir:{} Successful!-------------\n").format(log_dir))
 
     # env_id = env_name + 'NoFrameskip-v4'
-    env = SubprocVecEnv([make_env(env_name, i, log_dir) for i in range(num_cpu)])
+    env = SubprocVecEnv([make_football_env(env_name, i, log_dir) for i in range(num_cpu)])
     # env = Monitor(env, log_dir, allow_early_resets=True)
     model = get_model(model_name, env, log_dir)
 
@@ -162,8 +164,7 @@ def run(model_name, env_name, num_cpu, log_dir):
 
 
 def test(model_name, env_name, num_cpu, log_dir):
-    env_id = env_name + 'NoFrameskip-v4'
-    env = SubprocVecEnv([make_env(env_id, i, log_dir, useMonitor=False) for i in range(num_cpu)])
+    env = SubprocVecEnv([make_football_env(env_name, i, log_dir, useMonitor=False) for i in range(num_cpu)])
     # env = Monitor(env, log_dir, allow_early_resets=True)
     model = get_model(model_name, env, log_dir)
 
