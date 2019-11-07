@@ -39,7 +39,9 @@ class SelfAttentionCinLstmPolicy(LstmPolicy):
             # max_pooling
             # cin_maxpooling_output = tf.reduce_max(cin_output, axis=[1])
             # cin_output = tf.reshape(cin_output, [-1, 588, 2 * 66])
-            cin_maxpooling_output = tf.nn.pool(cin_output, window_shape=[196], padding='VALID', strides=[196], pooling_type="MAX")
+            maxpooling_shape = entities.shape[1] * entities.shape[2]
+            print('maxpooling_shape:', maxpooling_shape)
+            cin_maxpooling_output = tf.nn.pool(cin_output, window_shape=[maxpooling_shape], padding='VALID', strides=[maxpooling_shape], pooling_type="MAX")
 
             print('cin_maxpooling_output', cin_maxpooling_output)
             input_sequence = batch_to_seq(cin_maxpooling_output, self.n_env, n_steps)
